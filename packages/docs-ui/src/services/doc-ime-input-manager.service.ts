@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import type { DocumentDataModel, JSONXActions, Nullable } from '@univerjs/core';
+import type { JSONXActions, Nullable } from '@univerjs/core';
 import type { IRichTextEditingMutationParams } from '@univerjs/docs';
 import type { IRenderContext, IRenderModule, ITextRangeWithStyle } from '@univerjs/engine-render';
 import { JSONX, RxDisposable } from '@univerjs/core';
@@ -28,13 +28,14 @@ interface ICacheParams {
 // and then output the entire undo and redo operations.
 export class DocIMEInputManagerService extends RxDisposable implements IRenderModule {
     private _previousActiveRange: Nullable<ITextRangeWithStyle> = null;
+    private _startStyle: Nullable<any> = null;
 
     private _undoMutationParamsCache: IRichTextEditingMutationParams[] = [];
 
     private _redoMutationParamsCache: IRichTextEditingMutationParams[] = [];
 
     constructor(
-        private readonly _context: IRenderContext<DocumentDataModel>
+        private readonly _context: IRenderContext<any>
     ) {
         super();
     }
@@ -42,6 +43,7 @@ export class DocIMEInputManagerService extends RxDisposable implements IRenderMo
     clearUndoRedoMutationParamsCache() {
         this._undoMutationParamsCache = [];
         this._redoMutationParamsCache = [];
+        this._startStyle = null; // 🔥 CRITICAL: Fix style leakage across sessions
     }
 
     getUndoRedoMutationParamsCache() {
@@ -62,6 +64,14 @@ export class DocIMEInputManagerService extends RxDisposable implements IRenderMo
 
     setActiveRange(range: Nullable<ITextRangeWithStyle>) {
         this._previousActiveRange = range;
+    }
+
+    getStartStyle(): Nullable<any> {
+        return this._startStyle;
+    }
+
+    setStartStyle(style: Nullable<any>) {
+        this._startStyle = style;
     }
 
     pushUndoRedoMutationParams(undoParams: IRichTextEditingMutationParams, redoParams: IRichTextEditingMutationParams) {
@@ -100,5 +110,6 @@ export class DocIMEInputManagerService extends RxDisposable implements IRenderMo
         this._redoMutationParamsCache = [];
 
         this._previousActiveRange = null;
+        this._startStyle = null;
     }
 }
