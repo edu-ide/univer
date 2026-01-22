@@ -945,7 +945,8 @@ export function isRichText(body: IDocumentBody): boolean {
     const bodyNoLineBreak = body.dataStream.replace(/(\r\n)+$/, '');
 
     // Some styles are unique to rich text. When this style appears, we consider the value to be rich text.
-    const richTextStyle = ['va'];
+    // 🔥 MODIFIED: Added more style properties to prevent aggressive flattening to cell styles
+    const richTextStyle = ['va', 'cl', 'bl', 'it', 'st', 'ul', 'bg', 'ff', 'fs'];
 
     return (
         // This is because after editing, an inexplicable second paragraph style will appear \r\n

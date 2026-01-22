@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import type { DocumentDataModel, ICommand, ICommandInfo } from '@univerjs/core';
+import type { DocumentDataModel, ICommand, ICommandInfo, IDocumentBody } from '@univerjs/core';
 import type { IRichTextEditingMutationParams } from '@univerjs/docs';
 import type { ITextRangeWithStyle } from '@univerjs/engine-render';
 import { BuildTextUtils, CommandType, ICommandService, IUniverInstanceService, JSONX, SHEET_EDITOR_UNITS, TextX, TextXActionType, UniverInstanceType } from '@univerjs/core';
@@ -92,13 +92,24 @@ export const IMEInputCommand: ICommand<IIMEInputCommandParams> = {
         const defaultTextStyle = docMenuStyleService.getDefaultStyle();
         const styleCache = docMenuStyleService.getStyleCache();
         const curCustomRange = getCustomRangeAtPosition(body.customRanges ?? [], startOffset + oldTextLen, SHEET_EDITOR_UNITS.includes(unitId));
-        const curTextRun = getTextRunAtPosition(
+        const stylePos = isCompositionStart ? startOffset : (oldTextLen > 0 ? startOffset : Math.max(0, startOffset - 1));
+        let curTextRun = getTextRunAtPosition(
             body,
-            isCompositionStart ? endOffset : startOffset + oldTextLen,
+            stylePos,
             defaultTextStyle,
             styleCache,
             SHEET_EDITOR_UNITS.includes(unitId)
         );
+
+        // 🔥 1st Principle: Capture style at START and reuse it.
+        if (isCompositionStart) {
+            imeInputManagerService.setStartStyle(curTextRun?.ts);
+        } else {
+            const startStyle = imeInputManagerService.getStartStyle();
+            if (startStyle) {
+                curTextRun = { ...curTextRun, ts: startStyle };
+            }
+        }
 
         const customDecorations = getCustomDecorationAtPosition(body.customDecorations ?? [], startOffset + oldTextLen);
         const textX = new TextX();
@@ -126,17 +137,85 @@ export const IMEInputCommand: ICommand<IIMEInputCommandParams> = {
             });
         }
 
+        // 🔥🔥🔥 Custom Helper for Slicing Text Runs
+        const sliceTextRuns = (body: IDocumentBody, start: number, length: number) => {
+            const runs: any[] = [];
+            const end = start + length;
+            const { textRuns = [] } = body;
+
+            for (const run of textRuns) {
+                const runStart = run.st;
+                const runEnd = run.ed;
+
+                if (runEnd > start && runStart < end) {
+                    const intersectStart = Math.max(start, runStart);
+                    const intersectEnd = Math.min(end, runEnd);
+                    runs.push({
+                        st: intersectStart - start,
+                        ed: intersectEnd - start,
+                        ts: { ...run.ts },
+                    });
+                }
+            }
+            return runs;
+        };
+
+        // 🔥🔥🔥 Logic to decide runs
+        let runsToApply: any[] = [];
+
+        // 1. Try to preserve existing runs
+        if (oldTextLen > 0) {
+            // IME replaces [startOffset, startOffset + oldTextLen]
+            // But existing styles are in body.textRuns relative to the whole doc.
+            // We need to extract them.
+
+            // Check if we are updating existing text (Composition Update)
+            // The range to be replaced starts at 'startOffset'.
+            const existingRuns = sliceTextRuns(body, startOffset, oldTextLen);
+
+            if (existingRuns.length > 0) {
+                let currentPos = 0;
+                for (const run of existingRuns) {
+                    const runLen = run.ed - run.st;
+                    const applyLen = Math.min(len - currentPos, runLen);
+
+                    if (applyLen <= 0) break;
+
+                    runsToApply.push({
+                        st: currentPos,
+                        ed: currentPos + applyLen,
+                        ts: run.ts,
+                    });
+
+                    currentPos += applyLen;
+                }
+
+                // Remaining part gets the last style or cursor style
+                if (currentPos < len) {
+                    const lastStyle = runsToApply.length > 0 ? runsToApply[runsToApply.length - 1].ts : curTextRun?.ts;
+                    runsToApply.push({
+                        st: currentPos,
+                        ed: len,
+                        ts: lastStyle || {},
+                    });
+                }
+            }
+        }
+
+        // 2. Fallback to style at position
+        if (runsToApply.length === 0) {
+            runsToApply = [{
+                st: 0,
+                ed: len,
+                ts: curTextRun?.ts || {},
+            }];
+        }
+
         textX.push({
             t: TextXActionType.INSERT,
             body: {
                 dataStream: newText,
-                textRuns: curTextRun
-                    ? [{
-                        ...curTextRun,
-                        st: 0,
-                        ed: newText.length,
-                    }]
-                    : [],
+                textRuns: runsToApply,
                 customRanges: curCustomRange
                     ? [{
                         ...curCustomRange,
