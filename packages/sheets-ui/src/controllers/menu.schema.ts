@@ -187,17 +187,21 @@ import { Text2NumberContextMenuItemFactory, Text2NumberToolbarMenuItemFactory, T
 
 export const menuSchema: MenuSchemaType = {
     [RibbonPosition.START]: {
-        [RibbonStartGroup.HISTORY]: {
+        [RibbonStartGroup.UNDO]: {
+            // Undo/Redo - usually here but Univer might put them in a separate History group or global
+        },
+        [RibbonStartGroup.CLIPBOARD]: {
             [SetOnceFormatPainterCommand.id]: {
                 order: 2,
                 menuItemFactory: FormatPainterMenuItemFactory,
             },
+            // Paste/Clear often goes here
             [ClearSelectionAllCommand.id]: {
                 order: 3,
                 menuItemFactory: ClearSelectionAllMenuItemFactory,
             },
         },
-        [RibbonStartGroup.FORMAT]: {
+        [RibbonStartGroup.FONT]: {
             [SetRangeFontFamilyCommand.id]: {
                 order: 1,
                 menuItemFactory: FontFamilySelectorMenuItemFactory,
@@ -251,7 +255,7 @@ export const menuSchema: MenuSchemaType = {
                 menuItemFactory: CellBorderSelectorMenuItemFactory,
             },
         },
-        [RibbonStartGroup.LAYOUT]: {
+        [RibbonStartGroup.ALIGNMENT]: {
             [SetHorizontalTextAlignCommand.id]: {
                 order: 0,
                 menuItemFactory: HorizontalAlignMenuItemFactory,

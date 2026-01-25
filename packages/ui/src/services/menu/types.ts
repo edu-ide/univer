@@ -29,9 +29,14 @@ export enum RibbonPosition {
 }
 
 export enum RibbonStartGroup {
-    HISTORY = 'ribbon.start.history',
-    FORMAT = 'ribbon.start.format',
-    LAYOUT = 'ribbon.start.layout',
+    UNDO = 'ribbon.start.undo',
+    CLIPBOARD = 'ribbon.start.clipboard',
+    FONT = 'ribbon.start.font',
+    ALIGNMENT = 'ribbon.start.alignment',
+    NUMBER = 'ribbon.start.number',
+    STYLES = 'ribbon.start.styles',
+    CELLS = 'ribbon.start.cells',
+    EDITING = 'ribbon.start.editing',
     OTHERS = 'ribbon.start.others',
 }
 
