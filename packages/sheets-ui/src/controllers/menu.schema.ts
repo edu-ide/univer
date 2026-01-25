@@ -49,7 +49,7 @@ import {
     SetWorksheetRowIsAutoHeightCommand,
     ToggleGridlinesCommand,
 } from '@univerjs/sheets';
-import { ContextMenuGroup, ContextMenuPosition, RibbonDataGroup, RibbonPosition, RibbonStartGroup } from '@univerjs/ui';
+import { ContextMenuGroup, ContextMenuPosition, RibbonDataGroup, RibbonPageLayoutGroup, RibbonPosition, RibbonReviewGroup, RibbonStartGroup, RibbonViewGroup } from '@univerjs/ui';
 import {
     SheetCopyCommand,
     SheetCutCommand,
@@ -188,14 +188,13 @@ import { Text2NumberContextMenuItemFactory, Text2NumberToolbarMenuItemFactory, T
 export const menuSchema: MenuSchemaType = {
     [RibbonPosition.START]: {
         [RibbonStartGroup.UNDO]: {
-            // Undo/Redo - usually here but Univer might put them in a separate History group or global
+            // Undo/Redo
         },
         [RibbonStartGroup.CLIPBOARD]: {
             [SetOnceFormatPainterCommand.id]: {
                 order: 2,
                 menuItemFactory: FormatPainterMenuItemFactory,
             },
-            // Paste/Clear often goes here
             [ClearSelectionAllCommand.id]: {
                 order: 3,
                 menuItemFactory: ClearSelectionAllMenuItemFactory,
@@ -293,18 +292,38 @@ export const menuSchema: MenuSchemaType = {
                 },
             },
         },
-        [RibbonStartGroup.OTHERS]: {
+        // Cells, Editing groups would go here if commands existed in this schema
+    },
+    // PAGE LAYOUT TAB
+    [RibbonPosition.PAGE_LAYOUT]: {
+        [RibbonPageLayoutGroup.SHEET_OPTIONS]: {
+            // Gridlines can sometimes be here or in View. OnlyOffice puts it in Layout -> Show -> Gridlines
+        },
+    },
+    // REVIEW TAB
+    [RibbonPosition.REVIEW]: {
+        [RibbonReviewGroup.PROTECT]: {
             [AddRangeProtectionFromToolbarCommand.id]: {
                 order: 0,
                 menuItemFactory: sheetPermissionToolbarMenuFactory,
             },
         },
     },
+    // DATA TAB
     [RibbonPosition.DATA]: {
         [RibbonDataGroup.OTHERS]: {
             [TEXT_TO_NUMBER_TOOLBAR_MENU_ID]: {
                 order: 0,
                 menuItemFactory: Text2NumberToolbarMenuItemFactory,
+            },
+        },
+    },
+    // VIEW TAB
+    [RibbonPosition.VIEW]: {
+        [RibbonViewGroup.VISIBILITY]: {
+            [ToggleGridlinesCommand.id]: {
+                order: 1,
+                menuItemFactory: ToggleGridlinesMenuFactory,
             },
         },
     },
