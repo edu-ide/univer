@@ -103,6 +103,22 @@ export class SlideDataModel extends UnitModel<ISlideData, UniverInstanceType.UNI
         return this.getPage(pageId)?.pageElements;
     }
 
+    getLayouts() {
+        return this._snapshot.layouts;
+    }
+
+    getMasters() {
+        return this._snapshot.master;
+    }
+
+    getLayout(layoutId: string) {
+        return this.getLayouts()?.[layoutId];
+    }
+
+    getMaster(masterId: string) {
+        return this.getMasters()?.[masterId];
+    }
+
     getElement(pageId: string, elementId: string) {
         return this.getElementsByPage(pageId)?.[elementId];
     }

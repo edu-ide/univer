@@ -187,10 +187,7 @@ import { Text2NumberContextMenuItemFactory, Text2NumberToolbarMenuItemFactory, T
 
 export const menuSchema: MenuSchemaType = {
     [RibbonPosition.START]: {
-        [RibbonStartGroup.UNDO]: {
-            // Undo/Redo
-        },
-        [RibbonStartGroup.CLIPBOARD]: {
+        [RibbonStartGroup.HISTORY]: {
             [SetOnceFormatPainterCommand.id]: {
                 order: 2,
                 menuItemFactory: FormatPainterMenuItemFactory,
@@ -200,7 +197,7 @@ export const menuSchema: MenuSchemaType = {
                 menuItemFactory: ClearSelectionAllMenuItemFactory,
             },
         },
-        [RibbonStartGroup.FONT]: {
+        [RibbonStartGroup.FORMAT]: {
             [SetRangeFontFamilyCommand.id]: {
                 order: 1,
                 menuItemFactory: FontFamilySelectorMenuItemFactory,
@@ -254,7 +251,7 @@ export const menuSchema: MenuSchemaType = {
                 menuItemFactory: CellBorderSelectorMenuItemFactory,
             },
         },
-        [RibbonStartGroup.ALIGNMENT]: {
+        [RibbonStartGroup.LAYOUT]: {
             [SetHorizontalTextAlignCommand.id]: {
                 order: 0,
                 menuItemFactory: HorizontalAlignMenuItemFactory,
@@ -292,17 +289,7 @@ export const menuSchema: MenuSchemaType = {
                 },
             },
         },
-        // Cells, Editing groups would go here if commands existed in this schema
-    },
-    // PAGE LAYOUT TAB
-    [RibbonPosition.PAGE_LAYOUT]: {
-        [RibbonPageLayoutGroup.SHEET_OPTIONS]: {
-            // Gridlines can sometimes be here or in View. OnlyOffice puts it in Layout -> Show -> Gridlines
-        },
-    },
-    // REVIEW TAB
-    [RibbonPosition.REVIEW]: {
-        [RibbonReviewGroup.PROTECT]: {
+        [RibbonStartGroup.OTHERS]: {
             [AddRangeProtectionFromToolbarCommand.id]: {
                 order: 0,
                 menuItemFactory: sheetPermissionToolbarMenuFactory,

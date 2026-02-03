@@ -845,6 +845,20 @@ export function getFontCreateConfig(
     const { startIndex } = paragraphNode;
     const originTextRun = viewModel.getTextRun(index + startIndex);
 
+    // DEBUG: Log getTextRun call to understand why color is not applied
+    const dataStream = viewModel.getBody()?.dataStream;
+    const textRunsCount = viewModel.getBody()?.textRuns?.length ?? 0;
+    if (dataStream && dataStream.startsWith('Red')) {
+        console.log('[getFontCreateConfig] getTextRun call:', {
+            index,
+            startIndex,
+            totalIndex: index + startIndex,
+            originTextRun: JSON.stringify(originTextRun),
+            textRunsInBody: textRunsCount,
+            firstTextRun: JSON.stringify(viewModel.getBody()?.textRuns?.[0])
+        });
+    }
+
     const textRun = isRenderStyle === BooleanNumber.FALSE
         ? DEFAULT_TEXT_RUN
         : originTextRun ?? DEFAULT_TEXT_RUN;

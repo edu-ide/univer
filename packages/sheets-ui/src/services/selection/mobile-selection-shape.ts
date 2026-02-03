@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import type { ThemeService } from '@univerjs/core';
+import type { ThemeService, LocaleService } from '@univerjs/core';
 import type { BaseObject, IRectProps, Scene } from '@univerjs/engine-render';
 import type { ISelectionStyle } from '@univerjs/sheets';
 import { RANGE_TYPE } from '@univerjs/core';
@@ -39,6 +39,7 @@ export class MobileSelectionControl extends SelectionControl {
         protected override _scene: Scene,
         protected override _zIndex: number,
         protected override readonly _themeService: ThemeService,
+        protected override readonly _localeService: LocaleService,
         options?: {
             highlightHeader?: boolean;
             enableAutoFill?: boolean;
@@ -47,7 +48,7 @@ export class MobileSelectionControl extends SelectionControl {
             rangeType?: RANGE_TYPE;
         }
     ) {
-        super(_scene, _zIndex, _themeService, options);
+        super(_scene, _zIndex, _themeService, _localeService, options);
         this._rangeType = options?.rangeType || RANGE_TYPE.NORMAL;
         this.initControlPoints();
     }

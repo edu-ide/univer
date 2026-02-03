@@ -26,6 +26,7 @@ import {
     ObjectMatrix,
     ThemeService,
     toDisposable,
+    LocaleService,
 } from '@univerjs/core';
 import {
     ErrorType,
@@ -57,7 +58,8 @@ export class FormulaEditorShowController extends Disposable implements IRenderMo
         @IRenderManagerService private readonly _renderManagerService: IRenderManagerService,
         @Inject(SheetSkeletonManagerService) private readonly _sheetSkeletonManagerService: SheetSkeletonManagerService,
         @ICommandService private readonly _commandService: ICommandService,
-        @ILogService private readonly _logService: ILogService
+        @ILogService private readonly _logService: ILogService,
+        @Inject(LocaleService) private readonly _localeService: LocaleService
     ) {
         super();
         this._initSkeletonChangeListener();
@@ -117,13 +119,13 @@ export class FormulaEditorShowController extends Disposable implements IRenderMo
                             cellInfo = { f: formulaString };
                         }
 
-                            /**
-                             * If the display conditions for the array formula are not met, return the range directly.
-                             */
+                        /**
+                         * If the display conditions for the array formula are not met, return the range directly.
+                         */
                         if (
                             value.v != null &&
-                                value.v !== '' &&
-                                arrayFormulaMatrixCell[unitId]?.[subUnitId]?.[row]?.[col] == null
+                            value.v !== '' &&
+                            arrayFormulaMatrixCell[unitId]?.[subUnitId]?.[row]?.[col] == null
                         ) {
                             if (cellInfo) {
                                 return { ...value, ...cellInfo };
@@ -132,12 +134,12 @@ export class FormulaEditorShowController extends Disposable implements IRenderMo
                             return next(value);
                         }
 
-                            /**
-                             * Mark the array formula for special display in subsequent processing
-                             */
+                        /**
+                         * Mark the array formula for special display in subsequent processing
+                         */
                         const matrixRange = arrayFormulaMatrixRange?.[unitId]?.[subUnitId];
                         if (matrixRange != null) {
-                                // For cells other than the upper left corner, the cellInfo information will be updated
+                            // For cells other than the upper left corner, the cellInfo information will be updated
                             cellInfo = this._displayArrayFormulaRangeShape(matrixRange, row, col, unitId, subUnitId, worksheet, cellInfo);
                         }
 
@@ -227,7 +229,7 @@ export class FormulaEditorShowController extends Disposable implements IRenderMo
         };
         const selectionWithCoord = attachSelectionWithCoord(selectionWithStyle, skeleton);
         const { rowHeaderWidth, columnHeaderHeight } = skeleton;
-        const control = new SelectionControl(scene, SELECTION_SHAPE_DEPTH.FORMULA_EDITOR_SHOW, this._themeService, {
+        const control = new SelectionControl(scene, SELECTION_SHAPE_DEPTH.FORMULA_EDITOR_SHOW, this._themeService, this._localeService, {
             highlightHeader: false,
             rowHeaderWidth,
             columnHeaderHeight,

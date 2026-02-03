@@ -37,6 +37,7 @@ import {
     RANGE_TYPE,
     ThemeService,
     toDisposable,
+    LocaleService,
 } from '@univerjs/core';
 import { ScrollTimer, ScrollTimerType, SHEET_VIEWPORT_KEY, Vector2 } from '@univerjs/engine-render';
 import { convertSelectionDataToRange, REF_SELECTIONS_ENABLED, SelectionMoveType, SetSelectionsOperation, SheetsSelectionsService } from '@univerjs/sheets';
@@ -81,7 +82,8 @@ export class MobileSheetsSelectionRenderService extends BaseSelectionRenderServi
         @ILogService private readonly _logService: ILogService,
         @ICommandService private readonly _commandService: ICommandService,
         @IContextService protected readonly _contextService: IContextService,
-        @Inject(SheetScrollManagerService) private readonly _scrollManagerService: SheetScrollManagerService
+        @Inject(SheetScrollManagerService) private readonly _scrollManagerService: SheetScrollManagerService,
+        @Inject(LocaleService) protected override readonly _localeService: LocaleService
 
     ) {
         super(
@@ -89,7 +91,8 @@ export class MobileSheetsSelectionRenderService extends BaseSelectionRenderServi
             themeService,
             shortcutService,
             sheetSkeletonManagerService,
-            _contextService
+            _contextService,
+            _localeService
         );
         this._workbookSelections = selectionManagerService.getWorkbookSelections(this._context.unitId);
         this._init();
@@ -236,7 +239,7 @@ export class MobileSheetsSelectionRenderService extends BaseSelectionRenderServi
         spreadsheet?.onPointerMove$.subscribeEvent((evt: IPointerEvent | IMouseEvent, _state) => {
             const edge = 10;
             if (Math.abs(evt.offsetX - pointerDownPos.x) > edge ||
-            Math.abs(evt.offsetY - pointerDownPos.y) > edge) {
+                Math.abs(evt.offsetY - pointerDownPos.y) > edge) {
                 clearLongPressTimer();
             }
         });
@@ -260,7 +263,7 @@ export class MobileSheetsSelectionRenderService extends BaseSelectionRenderServi
             clearTimeout(longPressTimer);
             const edge = 10;
             if (Math.abs(evt.offsetX - pointerDownPos.x) > edge ||
-            Math.abs(evt.offsetY - pointerDownPos.y) > edge) {
+                Math.abs(evt.offsetY - pointerDownPos.y) > edge) {
                 return;
             }
             createNewSelection(evt, false);
@@ -406,7 +409,7 @@ export class MobileSheetsSelectionRenderService extends BaseSelectionRenderServi
         const selectionControls = this.getSelectionControls();
         const { rowHeaderWidth, columnHeaderHeight } = skeleton;
         const rangeType = selection.range.rangeType;
-        const control = new MobileSelectionControl(scene, selectionControls.length, this._themeService, {
+        const control = new MobileSelectionControl(scene, selectionControls.length, this._themeService, this._localeService, {
             highlightHeader: this._highlightHeader,
             rowHeaderWidth,
             columnHeaderHeight,

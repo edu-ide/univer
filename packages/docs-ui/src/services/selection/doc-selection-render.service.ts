@@ -153,6 +153,7 @@ export class DocSelectionRenderService extends RxDisposable implements IRenderMo
         @Inject(DocSkeletonManagerService) private readonly _docSkeletonManagerService: DocSkeletonManagerService
     ) {
         super();
+        console.warn('🔍 [DocSelectionRenderService] Constructor called for unit:', _context.unitId);
         this._initDOM();
         this._registerContainer();
         this._setSystemHighlightColorToStyle();
@@ -708,6 +709,7 @@ export class DocSelectionRenderService extends RxDisposable implements IRenderMo
 
     private _initDOM() {
         const { unitId } = this._context;
+        console.warn('🔍 [DocSelectionRenderService] _initDOM called for unit:', unitId);
         const container = document.createElement('div');
         container.style.position = 'fixed';
         container.style.left = '0px';

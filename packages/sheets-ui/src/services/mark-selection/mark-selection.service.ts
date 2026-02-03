@@ -17,7 +17,7 @@
 import type { Workbook } from '@univerjs/core';
 import type { RenderUnit } from '@univerjs/engine-render';
 import type { ISelectionWithStyle } from '@univerjs/sheets';
-import { createIdentifier, Disposable, generateRandomId, Inject, IUniverInstanceService, ThemeService, UniverInstanceType } from '@univerjs/core';
+import { createIdentifier, Disposable, generateRandomId, Inject, IUniverInstanceService, ThemeService, UniverInstanceType, LocaleService } from '@univerjs/core';
 import { IRenderManagerService } from '@univerjs/engine-render';
 
 import { SELECTION_SHAPE_DEPTH } from '../selection/const';
@@ -43,7 +43,7 @@ interface IMarkSelectionInfo {
     exits: string[];
 }
 
-const DEFAULT_Z_INDEX = SELECTION_SHAPE_DEPTH.MARK_SELECTION; ;
+const DEFAULT_Z_INDEX = SELECTION_SHAPE_DEPTH.MARK_SELECTION;;
 export const IMarkSelectionService = createIdentifier<IMarkSelectionService>('univer.mark-selection-service');
 
 /**
@@ -57,7 +57,8 @@ export class MarkSelectionService extends Disposable implements IMarkSelectionSe
     constructor(
         @IUniverInstanceService private readonly _currentService: IUniverInstanceService,
         @IRenderManagerService private readonly _renderManagerService: IRenderManagerService,
-        @Inject(ThemeService) private readonly _themeService: ThemeService
+        @Inject(ThemeService) private readonly _themeService: ThemeService,
+        @Inject(LocaleService) private readonly _localeService: LocaleService
     ) {
         super();
     }
@@ -121,7 +122,7 @@ export class MarkSelectionService extends Disposable implements IMarkSelectionSe
 
             const { scene } = renderUnit;
             const { rowHeaderWidth, columnHeaderHeight } = skeleton;
-            const control = new SelectionControl(scene, zIndex, this._themeService, {
+            const control = new SelectionControl(scene, zIndex, this._themeService, this._localeService, {
                 enableAutoFill: false,
                 highlightHeader: false,
                 rowHeaderWidth,

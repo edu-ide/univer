@@ -101,9 +101,7 @@ export {
     RibbonFormulasGroup,
     RibbonInsertGroup,
     RibbonOthersGroup,
-    RibbonPageLayoutGroup,
     RibbonPosition,
-    RibbonReviewGroup,
     RibbonStartGroup,
     RibbonViewGroup,
 } from './services/menu/types';

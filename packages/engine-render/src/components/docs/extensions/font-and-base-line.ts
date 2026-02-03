@@ -95,6 +95,8 @@ export class FontAndBaseLine extends docExtension {
         const { cl: colorStyle, va: baselineOffset } = textStyle;
         const fontColor = getColorStyle(colorStyle) || COLOR_BLACK_RGB;
 
+
+
         if (fontColor && this._preFontColor !== fontColor) {
             ctx.fillStyle = fontColor;
         }

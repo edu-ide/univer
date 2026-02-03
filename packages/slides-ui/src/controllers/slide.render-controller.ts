@@ -369,17 +369,63 @@ export class SlideRenderController extends RxDisposable implements IRenderModule
         });
         viewMain.closeClip();
 
-        const { pageElements, pageBackgroundFill } = page;
+        const model = this._getCurrUnitModel();
 
-        // SceneViewers
-        const objects = this._objectProvider.convertToRenderObjects(pageElements, mainScene);
-        if (!objects || !slide) return;
+        // Hierarchy resolution: Slide -> Layout -> Master
+        const layoutId = page.slideProperties?.layoutObjectId;
+        const layout = layoutId ? model.getLayout(layoutId) : undefined;
+        const masterId = layout?.layoutProperties?.masterObjectId;
+        const master = masterId ? model.getMaster(masterId) : undefined;
 
-        this._addBackgroundRect(pageScene, pageBackgroundFill);
-        pageScene.addObjects(objects);
+        // Layer Constants
+        const LAYER_Z_INDEX = {
+            MASTER: 0,
+            LAYOUT: 1,
+            SLIDE: 2
+        };
+
+        // Enable Caching for Static Layers (Master & Layout)
+        // This optimizes performance by rendering these layers to an offscreen canvas.
+        pageScene.enableLayerCache(LAYER_Z_INDEX.MASTER, LAYER_Z_INDEX.LAYOUT);
+
+        // 1. Determine Background (Priority: Slide > Layout > Master)
+        const effectiveBackground = page.pageBackgroundFill || layout?.pageBackgroundFill || master?.pageBackgroundFill;
+
+        if (effectiveBackground) {
+            // Background goes to Master layer (bottom-most)
+            this._addBackgroundRect(pageScene, effectiveBackground);
+        }
+
+        // 2. Functional Element Processing (using Layers)
+        const addElementsToLayer = (
+            elementsMap: Record<string, IPageElement> | undefined,
+            layerIndex: number,
+            isInteractive: boolean
+        ) => {
+            if (!elementsMap) return;
+
+            const objects = this._objectProvider?.convertToRenderObjects(elementsMap, mainScene);
+
+            if (!objects) return;
+
+            objects.forEach(obj => {
+                obj.evented = isInteractive;
+                // Add to specific layer
+                pageScene.addObject(obj, layerIndex);
+            });
+
+            return objects;
+        };
+
+        // 3. Render Layers
+        addElementsToLayer(master?.pageElements, LAYER_Z_INDEX.MASTER, false);
+        addElementsToLayer(layout?.pageElements, LAYER_Z_INDEX.LAYOUT, false);
+        const slideObjects = addElementsToLayer(page.pageElements, LAYER_Z_INDEX.SLIDE, true) || [];
 
         pageScene.initTransformer();
-        objects.forEach((object) => {
+
+        // Only attach transformer to Slide objects (interactive ones)
+        slideObjects.forEach((object) => {
             pageScene.attachTransformerTo(object);
         });
 

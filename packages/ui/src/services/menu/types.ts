@@ -20,25 +20,18 @@ export enum MenuManagerPosition {
 }
 
 export enum RibbonPosition {
-    START = 'ribbon.start', // Home Tab
-    INSERT = 'ribbon.insert',
-    PAGE_LAYOUT = 'ribbon.pageLayout', // MS Office Page Layout
-    FORMULAS = 'ribbon.formulas',
-    DATA = 'ribbon.data',
-    REVIEW = 'ribbon.review', // MS Office Review
-    VIEW = 'ribbon.view',
-    OTHERS = 'ribbon.others',
+    START = 'ribbon.start', // RibbonStartGroup
+    INSERT = 'ribbon.insert', // RibbonInsertGroup
+    FORMULAS = 'ribbon.formulas', // RibbonFormulasGroup
+    DATA = 'ribbon.data', // RibbonDataGroup
+    VIEW = 'ribbon.view', // RibbonViewGroup
+    OTHERS = 'ribbon.others', // RibbonOthersGroup
 }
 
 export enum RibbonStartGroup {
-    UNDO = 'ribbon.start.undo',
-    CLIPBOARD = 'ribbon.start.clipboard',
-    FONT = 'ribbon.start.font',
-    ALIGNMENT = 'ribbon.start.alignment',
-    NUMBER = 'ribbon.start.number',
-    STYLES = 'ribbon.start.styles',
-    CELLS = 'ribbon.start.cells',
-    EDITING = 'ribbon.start.editing',
+    HISTORY = 'ribbon.start.history',
+    FORMAT = 'ribbon.start.format',
+    LAYOUT = 'ribbon.start.layout',
     OTHERS = 'ribbon.start.others',
 }
 
@@ -64,21 +57,6 @@ export enum RibbonViewGroup {
     DISPLAY = 'ribbon.view.display',
     VISIBILITY = 'ribbon.view.Visibility',
     OTHERS = 'ribbon.view.others',
-}
-
-export enum RibbonPageLayoutGroup {
-    THEMES = 'ribbon.pageLayout.themes',
-    PAGE_SETUP = 'ribbon.pageLayout.pageSetup',
-    SCALE_TO_FIT = 'ribbon.pageLayout.scaleToFit',
-    SHEET_OPTIONS = 'ribbon.pageLayout.sheetOptions',
-    ARRANGE = 'ribbon.pageLayout.arrange',
-}
-
-export enum RibbonReviewGroup {
-    PROOFING = 'ribbon.review.proofing',
-    COMMENTS = 'ribbon.review.comments',
-    CHANGES = 'ribbon.review.changes',
-    PROTECT = 'ribbon.review.protect',
 }
 
 export enum RibbonOthersGroup {
