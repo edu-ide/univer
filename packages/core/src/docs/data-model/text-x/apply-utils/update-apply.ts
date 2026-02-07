@@ -246,32 +246,42 @@ function updateParagraphs(
 
                 if (coverType === UpdateDocsAttributeType.COVER) {
                     newParagraphStyle = { ...removeParagraphStyle, ...updateParagraphStyle };
-                    newBullet = {
-                        listId: '',
-                        listType: PresetListType.BULLET_LIST,
-                        nestingLevel: 0,
-                        textStyle: {},
-                        ...removeBullet,
-                        ...updateBullet,
-                    };
+                    // 🩹 FIX: Only construct bullet if at least one side has bullet data.
+                    // Previously, a default { listType: BULLET_LIST } was ALWAYS created,
+                    // causing ghost bullets on paragraph style changes (e.g. alignment).
+                    if (removeBullet || updateBullet) {
+                        newBullet = {
+                            listId: '',
+                            listType: PresetListType.BULLET_LIST,
+                            nestingLevel: 0,
+                            textStyle: {},
+                            ...removeBullet,
+                            ...updateBullet,
+                        };
+                    }
                 } else {
                     newParagraphStyle = { ...updateParagraphStyle, ...removeParagraphStyle };
-                    newBullet = {
-                        listId: '',
-                        listType: PresetListType.BULLET_LIST,
-                        nestingLevel: 0,
-                        textStyle: {},
-                        ...updateBullet,
-                        ...removeBullet,
-                    };
+                    if (removeBullet || updateBullet) {
+                        newBullet = {
+                            listId: '',
+                            listType: PresetListType.BULLET_LIST,
+                            nestingLevel: 0,
+                            textStyle: {},
+                            ...updateBullet,
+                            ...removeBullet,
+                        };
+                    }
                 }
 
                 if (updateStartIndex === removeStartIndex) {
-                    splitUpdateParagraphs.push({
+                    const para: IParagraph = {
                         startIndex: updateStartIndex,
                         paragraphStyle: newParagraphStyle,
-                        bullet: newBullet,
-                    });
+                    };
+                    if (newBullet) {
+                        para.bullet = newBullet;
+                    }
+                    splitUpdateParagraphs.push(para);
                     break;
                 }
             }
