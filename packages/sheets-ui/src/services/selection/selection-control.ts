@@ -656,10 +656,10 @@ export class SelectionControl extends Disposable {
         }
 
         // --- Render User Label ---
-        const title = currentStyle.title;
+        const title = currentStyle.title?.replace(/[\r\n]+/g, ' ').trim();
         if (title) {
             this._labelGroup.show();
-            
+
             const fontSize = 14;
             const paddingX = 8;
             const paddingY = 4;
@@ -694,13 +694,13 @@ export class SelectionControl extends Disposable {
 
             this._labelText = new RichText(this._localeService, '__SelectionLabelText__' + this.zIndex + '_' + Date.now(), {
                 zIndex: 1001,
-                text: title, 
+                text: title,
                 fs: fontSize,
                 cl: {
                     rgb: '#ffffff',
                 },
             });
-            
+
             this._labelText.transformByState({
                 left: paddingX,
                 top: paddingY,

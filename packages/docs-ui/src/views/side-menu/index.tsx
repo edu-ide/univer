@@ -148,19 +148,7 @@ function DocSideMenuContent() {
         }
     });
 
-    const menus = paragraphMenus?.find((p) => p.isTitle)
-        ? paragraphMenus
-        : [
-            ...(title
-                ? [{
-                    id: TITLE_ID,
-                    text: title,
-                    level: 1,
-                    isTitle: true,
-                }]
-                : []),
-            ...(paragraphMenus ?? []),
-        ].filter(Boolean) as ISideMenuItem[];
+    const menus = paragraphMenus ?? [];
 
     const [open, setOpen] = useState(true);
 

@@ -16,7 +16,48 @@
 
 import type { Dependency, DependencyIdentifier, Injector } from '@wendellhu/redi';
 
-export * from '@wendellhu/redi';
+// Values
+export {
+    createIdentifier,
+    forwardRef,
+    Inject,
+    Injector,
+    InjectSelf,
+    isAsyncDependencyItem,
+    isAsyncHook,
+    isClassDependencyItem,
+    isCtor,
+    isDisposable,
+    isFactoryDependencyItem,
+    isValueDependencyItem,
+    LookUp,
+    Many,
+    Optional,
+    Quantity,
+    RediError,
+    Self,
+    setDependencies,
+    SkipSelf,
+    WithNew
+} from '@wendellhu/redi';
+
+// Types
+export type {
+    AsyncDependencyItem,
+    AsyncHook,
+    ClassDependencyItem,
+    Ctor,
+    Dependency,
+    DependencyIdentifier,
+    DependencyItem,
+    DependencyPair,
+    FactoryDependencyItem,
+    IAccessor,
+    IdentifierDecorator,
+    IDisposable,
+    SyncDependencyItem,
+    ValueDependencyItem
+} from '@wendellhu/redi';
 
 /**
  * Register the dependencies to the injector.

@@ -135,8 +135,8 @@ export function DesktopWorkbenchContent(props: IUniverWorkbenchProps) {
               * all focusin event merged from its descendants. The DesktopLayoutService would listen to focusin events
               * bubbled to this element and refocus the input element.
               */}
-            <div
             <OnlyOfficeTitleBar />
+            <div
                 data-u-comp="workbench-layout"
                 className={clsx(`
                   univer-flex univer-h-full univer-min-h-0 univer-flex-col univer-bg-white

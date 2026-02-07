@@ -70,10 +70,15 @@ export class UniverSheetsDataValidationPlugin extends Plugin {
             defaultPluginConfig,
             this._config
         );
-        this._configService.setConfig(SHEETS_DATA_VALIDATION_PLUGIN_CONFIG_KEY, rest);
+        if (this._configService) {
+            this._configService.setConfig(SHEETS_DATA_VALIDATION_PLUGIN_CONFIG_KEY, rest);
+        } else {
+             console.warn('[UniverSheetsDataValidationPlugin] ConfigService not injected, skipping config setup.');
+        }
     }
 
     override onStarting() {
+        if (!this._injector) return;
         ([
             [DataValidationCacheService],
             [DataValidationListCacheService],

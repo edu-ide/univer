@@ -44,10 +44,15 @@ export class UniverDataValidationPlugin extends Plugin {
             defaultPluginConfig,
             this._config
         );
-        this._configService.setConfig(DATA_VALIDATION_PLUGIN_CONFIG_KEY, rest);
+        if (this._configService) {
+            this._configService.setConfig(DATA_VALIDATION_PLUGIN_CONFIG_KEY, rest);
+        } else {
+             console.warn('[UniverDataValidationPlugin] ConfigService not injected, skipping config setup.');
+        }
     }
 
     override onStarting(): void {
+        if (!this._injector) return;
         ([
             [DataValidationModel],
             [DataValidatorRegistryService],

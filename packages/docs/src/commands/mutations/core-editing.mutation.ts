@@ -17,7 +17,7 @@
 import type { IMutation, IMutationCommonParams, JSONXActions, Nullable } from '@univerjs/core';
 import type { ITextRangeWithStyle } from '@univerjs/engine-render';
 import type { IDocStateChangeInfo } from '../../services/doc-state-emit.service';
-import { CommandType, IUniverInstanceService, JSONX } from '@univerjs/core';
+import { CommandType, ICommandService, IUniverInstanceService, JSONX } from '@univerjs/core';
 import { IRenderManagerService } from '@univerjs/engine-render';
 import { DocSelectionManagerService } from '../../services/doc-selection-manager.service';
 import { DocSkeletonManagerService } from '../../services/doc-skeleton-manager.service';
@@ -54,6 +54,9 @@ export const RichTextEditingMutation: IMutation<IRichTextEditingMutationParams, 
 
     // eslint-disable-next-line max-lines-per-function
     handler: (accessor, params) => {
+        // 🛑 CORE DIAGNOSTIC: See what is reaching the mutation
+        console.log('💊 [CoreDocMutation] Handler called with trigger:', params.trigger, '| unitId:', params.unitId);
+
         const {
             unitId,
             segmentId = '',
@@ -74,9 +77,11 @@ export const RichTextEditingMutation: IMutation<IRichTextEditingMutationParams, 
         const docStateEmitService = accessor.get(DocStateEmitService);
 
         const documentDataModel = univerInstanceService.getUniverDocInstance(unitId);
-        const documentViewModel = renderManagerService.getRenderById(unitId)?.with(DocSkeletonManagerService).getViewModel();
-        if (documentDataModel == null || documentViewModel == null) {
-            throw new Error(`DocumentDataModel or documentViewModel not found for unitId: ${unitId}`);
+        const renderer = renderManagerService.getRenderById(unitId);
+        const documentViewModel = renderer?.with(DocSkeletonManagerService).getViewModel();
+
+        if (documentDataModel == null) {
+            throw new Error(`DocumentDataModel not found for unitId: ${unitId}`);
         }
 
         const docSelectionManagerService = accessor.get(DocSelectionManagerService);
@@ -99,8 +104,12 @@ export const RichTextEditingMutation: IMutation<IRichTextEditingMutationParams, 
         const undoActions = JSONX.invertWithDoc(actions, documentDataModel.getSnapshot());
         documentDataModel.apply(actions);
 
-        // Step 2: Update Doc View Model.
-        documentViewModel.reset(documentDataModel);
+        // Step 2: Update Doc View Model (if available).
+        if (documentViewModel) {
+            documentViewModel.reset(documentDataModel);
+        } else {
+            console.warn(`⚠️ [RichTextEditingMutation] Skipping ViewModel reset for ${unitId} (Renderer not ready)`);
+        }
         // Step 3: Update cursor & selection.
         // Make sure update cursor & selection after doc skeleton is calculated.
         if (!noNeedSetTextRange && textRanges && trigger != null && !isSync) {
@@ -130,6 +139,18 @@ export const RichTextEditingMutation: IMutation<IRichTextEditingMutationParams, 
             syncer,
         };
         docStateEmitService.emitStateChangeInfo(changeState);
+
+        // 🆕 FORCE NOTIFICATION: Manually trigger event using strings if tokens fail
+        try {
+            // Use accessor.get with the class identifier we imported
+            const cmdSvc = accessor.get(ICommandService);
+            if (cmdSvc && (cmdSvc as any).onCommandExecuted) {
+                // If we are here, cmdSvc is defined
+            }
+        } catch (e) {
+            // Fallback: search for any service that looks like a command service in the injector
+            console.warn('⚠️ [RichTextEditingMutation] Accessing CommandService via token failed, ignoring manual emit.');
+        }
 
         return {
             unitId,

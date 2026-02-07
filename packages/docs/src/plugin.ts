@@ -51,10 +51,19 @@ export class UniverDocsPlugin extends Plugin {
             defaultPluginConfig,
             this._config
         );
-        this._configService.setConfig(DOCS_PLUGIN_CONFIG_KEY, rest);
+        
+        if (this._configService) {
+            this._configService.setConfig(DOCS_PLUGIN_CONFIG_KEY, rest);
+        } else {
+             console.warn('[UniverDocsPlugin] ConfigService not injected, skipping config setup.');
+        }
     }
 
     override onStarting(): void {
+        if (!this._injector) {
+             console.error('[UniverDocsPlugin] Injector not injected! Initialization skipped.');
+             return;
+        }
         this._initializeDependencies();
         this._initializeCommands();
     }

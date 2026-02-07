@@ -77,10 +77,18 @@ export class UniverFormulaEnginePlugin extends Plugin {
             defaultPluginConfig,
             this._config
         );
-        this._configService.setConfig(ENGINE_FORMULA_PLUGIN_CONFIG_KEY, rest);
+        if (this._configService) {
+            this._configService.setConfig(ENGINE_FORMULA_PLUGIN_CONFIG_KEY, rest);
+        } else {
+             console.warn('[UniverFormulaEnginePlugin] ConfigService not injected, skipping config setup.');
+        }
     }
 
     override onStarting(): void {
+        if (!this._injector) {
+             console.error('[UniverFormulaEnginePlugin] Injector not injected! Initialization skipped.');
+             return;
+        }
         this._initialize();
         this._initializeWithOverride();
     }

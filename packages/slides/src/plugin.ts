@@ -76,9 +76,6 @@ export class UniverSlidesPlugin extends Plugin {
     }
 
 
-    override onReady(): void {
-
-    }
 
     getConfig() {
         return this._config;
