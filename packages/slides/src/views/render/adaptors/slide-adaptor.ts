@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-import { getColorStyle, Inject, Injector, PageElementType, SlideDataModel } from '@univerjs/core';
-import { Rect, Scene, Slide, Viewport } from '@univerjs/engine-render';
 import type { IColorStyle, IPageElement, ISlidePage } from '@univerjs/core';
 import type { Engine } from '@univerjs/engine-render';
+import { getColorStyle, Inject, Injector, PageElementType, SlideDataModel } from '@univerjs/core';
+import { Image, Rect, Scene, Slide, Viewport } from '@univerjs/engine-render';
 
 import { CanvasObjectProviderRegistry, ObjectAdaptor } from '../adaptor';
 import { ObjectProvider } from '../object-provider';
@@ -154,6 +154,75 @@ export class SlideAdaptor extends ObjectAdaptor {
 
         const { width: pageWidth = 0, height: pageHeight = 0 } = pageSize;
 
+        // Image background: render as full-page Image object
+        if (fill.image) {
+            // White base rect behind image - layer 0, low zIndex
+            const baseRect = new Rect('canvas-base', {
+                left: 0,
+                top: 0,
+                width: pageWidth,
+                height: pageHeight,
+                fill: 'rgba(255,255,255,1)',
+                zIndex: -2,
+                evented: false,
+            });
+            scene.addObject(baseRect, 0);
+
+            const bgImage = new Image('canvas-bg', {
+                url: fill.image,
+                left: 0,
+                top: 0,
+                width: pageWidth,
+                height: pageHeight,
+                zIndex: -1,
+                evented: false,
+                forceRender: true,
+            });
+            scene.addObject(bgImage, 0);
+            return;
+        }
+
+        // Gradient background: use Canvas native gradient
+        if (fill.gradient && fill.gradient.stops.length >= 2) {
+            const { angle = 0, stops } = fill.gradient;
+            const page = new Rect('canvas', {
+                left: 0,
+                top: 0,
+                width: pageWidth,
+                height: pageHeight,
+                strokeWidth: 1,
+                stroke: 'rgba(198,198,198, 1)',
+                fill: stops[0].color,
+                zIndex: 0,
+                evented: false,
+            });
+
+            // Override draw to use native canvas gradient
+            const origDraw = page.render.bind(page);
+            page.render = (ctx: any, ...args: any[]) => {
+                if (ctx && ctx._context) {
+                    const rads = (angle * Math.PI) / 180;
+                    const cx = pageWidth / 2;
+                    const cy = pageHeight / 2;
+                    const diagLen = Math.sqrt(pageWidth * pageWidth + pageHeight * pageHeight) / 2;
+                    const x0 = cx - diagLen * Math.cos(rads);
+                    const y0 = cy - diagLen * Math.sin(rads);
+                    const x1 = cx + diagLen * Math.cos(rads);
+                    const y1 = cy + diagLen * Math.sin(rads);
+                    const grad = ctx._context.createLinearGradient(x0, y0, x1, y1);
+                    for (const s of stops) {
+                        grad.addColorStop(Math.min(1, Math.max(0, s.position)), s.color);
+                    }
+                    (page as any)._fill = grad;
+                }
+                return origDraw(ctx, ...args);
+            };
+
+            scene.addObject(page, 0);
+            return;
+        }
+
+        const colorStr = getColorStyle(fill);
         const page = new Rect('canvas', {
             left: 0,
             top: 0,
@@ -161,7 +230,7 @@ export class SlideAdaptor extends ObjectAdaptor {
             height: pageHeight,
             strokeWidth: 1,
             stroke: 'rgba(198,198,198, 1)',
-            fill: getColorStyle(fill) || 'rgba(255,255,255, 1)',
+            fill: colorStr || 'rgba(255,255,255, 1)',
             zIndex: 0,
             evented: false,
         });
