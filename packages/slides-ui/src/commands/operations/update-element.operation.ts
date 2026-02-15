@@ -25,7 +25,7 @@ export interface IUpdateElementOperationParams {
 
 export const UpdateSlideElementOperation: ICommand<IUpdateElementOperationParams> = {
     id: 'slide.operation.update-element',
-    type: CommandType.OPERATION,
+    type: CommandType.MUTATION,
     handler: (accessor, params: IUpdateElementOperationParams) => {
         const { oKey, props } = params!;
         const univerInstanceService = accessor.get(IUniverInstanceService);

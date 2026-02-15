@@ -16,10 +16,12 @@
 
 import type { EventState, IColorStyle, IPageElement, ISlidePage, Nullable, SlideDataModel, UnitModel } from '@univerjs/core';
 import type { BaseObject, IRenderContext, IRenderModule, IWheelEvent } from '@univerjs/engine-render';
+import type { IUpdateElementOperationParams } from '../commands/operations/update-element.operation';
 import type { PageID } from '../type';
-import { debounce, getColorStyle, Inject, Injector, IUniverInstanceService, RxDisposable, UniverInstanceType } from '@univerjs/core';
+import { CommandType, debounce, getColorStyle, ICommandService, Inject, Injector, IUndoRedoService, IUniverInstanceService, RxDisposable, UniverInstanceType } from '@univerjs/core';
 import {
     getCurrentTypeOfRenderer,
+    Image as UniverImage,
     IRenderManagerService,
     Rect,
     Scene,
@@ -28,6 +30,10 @@ import {
     Viewport,
 } from '@univerjs/engine-render';
 import { ObjectProvider, SLIDE_KEY } from '@univerjs/slides';
+import { AddSlideElementMutation } from '../commands/mutations/element.mutation';
+import type { IAddSlideElementMutationParams, IRemoveSlideElementMutationParams } from '../commands/mutations/element.mutation';
+import { RemoveSlideElementMutation } from '../commands/mutations/element.mutation';
+import { UpdateSlideElementOperation } from '../commands/operations/update-element.operation';
 
 export class SlideRenderController extends RxDisposable implements IRenderModule {
     private _objectProvider: ObjectProvider | null = null;
@@ -36,8 +42,9 @@ export class SlideRenderController extends RxDisposable implements IRenderModule
         private readonly _renderContext: IRenderContext<UnitModel>,
         @Inject(Injector) private readonly _injector: Injector,
         @IUniverInstanceService private readonly _univerInstanceService: IUniverInstanceService,
-        @IRenderManagerService private readonly _renderManagerService: IRenderManagerService
-
+        @IRenderManagerService private readonly _renderManagerService: IRenderManagerService,
+        @ICommandService private readonly _commandService: ICommandService,
+        @IUndoRedoService private readonly _undoRedoService: IUndoRedoService
     ) {
         super();
         this._objectProvider = this._injector.createInstance(ObjectProvider);
@@ -117,6 +124,129 @@ export class SlideRenderController extends RxDisposable implements IRenderModule
         engine.runRenderLoop(() => {
             scene.render();
         });
+
+        // Listen for element mutations (add/remove/update) to sync render objects (including undo/redo)
+        this._commandService.onCommandExecuted((command) => {
+            const slideComponent = this._renderContext.mainComponent as Slide;
+            if (!slideComponent) return;
+
+            if (command.id === AddSlideElementMutation.id) {
+                const params = command.params as IAddSlideElementMutationParams;
+                if (!params) return;
+                const { pageId, element } = params;
+
+                // Add the object to the scene
+                const sceneObject = this.createObjectToPage(element, pageId);
+                if (sceneObject) {
+                    this.setObjectActiveByPage(sceneObject, pageId);
+                }
+
+                // Refresh thumbnail
+                this._thumbSceneRender(pageId, slideComponent);
+            } else if (command.id === RemoveSlideElementMutation.id) {
+                const params = command.params as IRemoveSlideElementMutationParams;
+                if (!params) return;
+                const { pageId, elementId } = params;
+
+                // Remove the object from the scene
+                this.removeObjectById(elementId, pageId);
+
+                // Refresh thumbnail
+                this._thumbSceneRender(pageId, slideComponent);
+            } else if (command.id === UpdateSlideElementOperation.id) {
+                const params = command.params as IUpdateElementOperationParams;
+                if (!params) return;
+                const model = this._getCurrUnitModel();
+                if (!model) return;
+                const activePage = model.getActivePage();
+                if (!activePage) return;
+
+                const pageScene = slideComponent.getSubScene(activePage.id);
+                if (!pageScene) return;
+
+                const obj = pageScene.getObject(params.oKey);
+                if (obj && params.props) {
+                    obj.transformByState({
+                        left: params.props.left,
+                        top: params.props.top,
+                        width: params.props.width,
+                        height: params.props.height,
+                    });
+                    pageScene.makeDirtyNoParent(true);
+                }
+
+                // Refresh thumbnail
+                this._thumbSceneRender(activePage.id, slideComponent);
+            }
+        });
+
+        // 🦜 Listen for remote sync updates from SlideSyncController
+        const syncUpdateHandler = () => {
+            try {
+                const slideModel = this._getCurrUnitModel();
+                if (!slideModel) return;
+
+                const currentRender = this._currentRender();
+                if (!currentRender || !currentRender.mainComponent) return;
+
+                const slide = currentRender.mainComponent as Slide;
+                const pages = slideModel.getPages();
+                const pageOrder = slideModel.getPageOrder();
+                if (!pages || !pageOrder) return;
+
+                const activePageId = slideModel.getActivePage()?.id;
+
+                // 1. Remove scenes for pages that no longer exist
+                const existingKeys = Array.from(slide.getSubScenes().keys());
+                for (const key of existingKeys) {
+                    if (!pages[key]) {
+                        const scene = slide.getSubScene(key);
+                        scene?.dispose();
+                        slide.removeSubScene(key);
+                    }
+                }
+
+                // 2. Rebuild all existing pages to reflect element changes
+                for (const pageId of pageOrder) {
+                    const pageData = pages[pageId];
+                    if (!pageData) continue;
+
+                    // Destroy existing scene
+                    if (slide.hasPage(pageId)) {
+                        const existingScene = slide.getSubScene(pageId);
+                        existingScene?.dispose();
+                        slide.removeSubScene(pageId);
+                    }
+
+                    // Recreate scene from current model data
+                    // NOTE: createPageScene internally calls slide.addPageScene
+                    this.createPageScene(pageId, pageData);
+
+                    // Ensure thumb render exists for this page
+                    this._createThumb(pageId);
+                }
+
+                // 3. Restore active page
+                if (activePageId && slide.hasPage(activePageId)) {
+                    slide.changePage(activePageId);
+                } else {
+                    slide.activeFirstPage();
+                }
+
+                // 4. Mark scene dirty to trigger re-render
+                const { scene } = this._renderContext;
+                scene.makeDirtyNoParent(true);
+
+                // 5. Refresh all thumbnails (deferred to let scenes settle)
+                setTimeout(() => this.createThumbs(), 100);
+
+                console.log('🦜 [SlideRenderController] Remote sync scene rebuild complete');
+            } catch (e) {
+                console.warn('⚠️ [SlideRenderController] Sync update error:', e);
+            }
+        };
+        window.addEventListener('univer-slide-sync-update', syncUpdateHandler);
+        this.disposeWithMe({ dispose: () => window.removeEventListener('univer-slide-sync-update', syncUpdateHandler) });
     }
 
     private _scrollToCenter() {
@@ -148,11 +278,21 @@ export class SlideRenderController extends RxDisposable implements IRenderModule
     private _createSlide(mainScene: Scene) {
         const model = this._univerInstanceService.getCurrentUnitForType<SlideDataModel>(UniverInstanceType.UNIVER_SLIDE)!;
 
-        const { width: sceneWidth, height: sceneHeight } = mainScene;
-
         const pageSize = model.getPageSize();
-
         const { width = 100, height = 100 } = pageSize;
+
+        // Use engine (canvas) dimensions to center the slide in the visible viewport
+        const engine = mainScene.getEngine();
+        const canvasWidth = engine?.width || mainScene.width;
+        const canvasHeight = engine?.height || mainScene.height;
+
+        // Add padding around the slide so it's scrollable
+        const padding = 100;
+        const sceneWidth = Math.max(width + padding * 2, canvasWidth);
+        const sceneHeight = Math.max(height + padding * 2, canvasHeight);
+
+        // Resize scene to fit the slide with padding
+        mainScene.resize(sceneWidth, sceneHeight);
 
         const slideComponent = new Slide(SLIDE_KEY.COMPONENT, {
             left: (sceneWidth - width) / 2,
@@ -171,21 +311,97 @@ export class SlideRenderController extends RxDisposable implements IRenderModule
         return slideComponent;
     }
 
-    private _addBackgroundRect(scene: Scene, fill: IColorStyle) {
+    private _addBackgroundRect(scene: Scene, fill: any) {
         const model = this._univerInstanceService.getCurrentUnitForType<SlideDataModel>(UniverInstanceType.UNIVER_SLIDE)!;
 
         const pageSize = model.getPageSize();
 
         const { width: pageWidth = 0, height: pageHeight = 0 } = pageSize;
 
-        const page = new Rect('canvas', {
+        console.log(`🎨 [BG] _addBackgroundRect called: fill=${JSON.stringify(fill)?.substring(0, 200)}, pageSize=${pageWidth}x${pageHeight}`);
+
+        // Check if background is an image fill (from PPTX import)
+        if (fill && fill.image && typeof fill.image === 'string') {
+            console.log(`🎨 [BG] Creating IMAGE background: url length=${fill.image.length}`);
+            const bgImage = new UniverImage(`canvas_bg_image_${Date.now()}`, {
+                url: fill.image,
+                left: 0,
+                top: 0,
+                width: pageWidth,
+                height: pageHeight,
+                zIndex: 0,
+                evented: false,
+                forceRender: true,
+            });
+            scene.addObject(bgImage, 0);
+            return;
+        }
+
+        // Gradient background: use Canvas native gradient
+        if (fill && fill.gradient && fill.gradient.stops && fill.gradient.stops.length >= 2) {
+            const { angle = 0, stops } = fill.gradient;
+            console.log(`🎨 [BG] Creating GRADIENT background: ${stops.length} stops, angle=${angle}`);
+
+            // White base rect behind gradient — ensures alpha/transparent areas
+            // show white instead of canvas default black
+            const gradBase = new Rect('canvas-grad-base', {
+                left: 0,
+                top: 0,
+                width: pageWidth,
+                height: pageHeight,
+                fill: 'rgba(255,255,255,1)',
+                zIndex: -1,
+                evented: false,
+            });
+            scene.addObject(gradBase, 0);
+
+            const page = new Rect('canvas', {
+                left: 0,
+                top: 0,
+                width: pageWidth,
+                height: pageHeight,
+                strokeWidth: 1,
+                stroke: 'rgba(198,198,198,1)',
+                fill: 'rgba(255,255,255,0)',
+                zIndex: 0,
+                evented: false,
+            });
+
+            // Override draw to use native canvas gradient
+            const origDraw = page.render.bind(page);
+            page.render = (ctx: any, ...args: any[]) => {
+                if (ctx && ctx._context) {
+                    const rad = (angle * Math.PI) / 180;
+                    const cx = pageWidth / 2;
+                    const cy = pageHeight / 2;
+                    const d = Math.max(pageWidth, pageHeight);
+                    const x0 = cx - (d / 2) * Math.cos(rad);
+                    const y0 = cy - (d / 2) * Math.sin(rad);
+                    const x1 = cx + (d / 2) * Math.cos(rad);
+                    const y1 = cy + (d / 2) * Math.sin(rad);
+                    const grad = ctx._context.createLinearGradient(x0, y0, x1, y1);
+                    for (const s of stops) {
+                        grad.addColorStop(Math.min(1, Math.max(0, s.position)), s.color);
+                    }
+                    (page as any)._fill = grad;
+                }
+                return origDraw(ctx, ...args);
+            };
+            scene.addObject(page, 0);
+            return;
+        }
+
+        // Standard color background
+        const fillColor = getColorStyle(fill) || 'rgba(255,255,255,1)';
+        console.log(`🎨 [BG] Creating COLOR background: fill=${fillColor}`);
+        const page = new Rect(`canvas_${Date.now()}`, {
             left: 0,
             top: 0,
             width: pageWidth,
             height: pageHeight,
             strokeWidth: 1,
             stroke: 'rgba(198,198,198,1)',
-            fill: getColorStyle(fill) || 'rgba(255,255,255,1)',
+            fill: fillColor,
             zIndex: 0,
             evented: false,
         });
@@ -384,9 +600,11 @@ export class SlideRenderController extends RxDisposable implements IRenderModule
             SLIDE: 2
         };
 
-        // Enable Caching for Static Layers (Master & Layout)
-        // This optimizes performance by rendering these layers to an offscreen canvas.
-        pageScene.enableLayerCache(LAYER_Z_INDEX.MASTER, LAYER_Z_INDEX.LAYOUT);
+        // NOTE: Layer caching is intentionally disabled for sub-scenes.
+        // enableLayerCache causes a coordinate mismatch where cached layers (background)
+        // render at a different position than uncached layers (text objects) within
+        // SceneViewer sub-scenes. This is an engine-render bug in Layer cache transform handling.
+        // pageScene.enableLayerCache(LAYER_Z_INDEX.MASTER, LAYER_Z_INDEX.LAYOUT);
 
         // 1. Determine Background (Priority: Slide > Layout > Master)
         const effectiveBackground = page.pageBackgroundFill || layout?.pageBackgroundFill || master?.pageBackgroundFill;
@@ -400,11 +618,24 @@ export class SlideRenderController extends RxDisposable implements IRenderModule
         const addElementsToLayer = (
             elementsMap: Record<string, IPageElement> | undefined,
             layerIndex: number,
-            isInteractive: boolean
+            isInteractive: boolean,
+            layerName: string = 'unknown'
         ) => {
-            if (!elementsMap) return;
+            if (!elementsMap) {
+                console.log(`🔍 [RenderCtrl] addElementsToLayer(${layerName}): no elements map`);
+                return;
+            }
+
+            console.log(`🔍 [RenderCtrl] addElementsToLayer(${layerName}): ${Object.keys(elementsMap).length} elements, _objectProvider exists: ${!!this._objectProvider}`);
+
+            // Log element types before conversion
+            for (const [eid, el] of Object.entries(elementsMap)) {
+                console.log(`  🔍 [RenderCtrl] Element ${eid}: type=${el.type}, hasRichText=${!!el.richText}, hasImage=${!!el.image}, hasShape=${!!el.shape}`);
+            }
 
             const objects = this._objectProvider?.convertToRenderObjects(elementsMap, mainScene);
+
+            console.log(`🔍 [RenderCtrl] convertToRenderObjects returned: ${objects?.length ?? 'NULL'} objects`);
 
             if (!objects) return;
 
@@ -414,13 +645,17 @@ export class SlideRenderController extends RxDisposable implements IRenderModule
                 pageScene.addObject(obj, layerIndex);
             });
 
+            console.log(`🔍 [RenderCtrl] Added ${objects.length} objects to layer ${layerIndex} (${layerName})`);
             return objects;
         };
 
         // 3. Render Layers
-        addElementsToLayer(master?.pageElements, LAYER_Z_INDEX.MASTER, false);
-        addElementsToLayer(layout?.pageElements, LAYER_Z_INDEX.LAYOUT, false);
-        const slideObjects = addElementsToLayer(page.pageElements, LAYER_Z_INDEX.SLIDE, true) || [];
+        addElementsToLayer(master?.pageElements, LAYER_Z_INDEX.MASTER, false, 'master');
+        addElementsToLayer(layout?.pageElements, LAYER_Z_INDEX.LAYOUT, false, 'layout');
+        const slideObjects = addElementsToLayer(page.pageElements, LAYER_Z_INDEX.SLIDE, true, 'slide') || [];
+
+        console.log(`🔍 [RenderCtrl] Page ${pageId} scene created: ${slideObjects.length} slide objects, bg=${JSON.stringify(effectiveBackground)?.substring(0, 100)}`);
+
 
         pageScene.initTransformer();
 
@@ -431,8 +666,70 @@ export class SlideRenderController extends RxDisposable implements IRenderModule
 
         const transformer = pageScene.getTransformer();
 
-        transformer?.changeEnd$.subscribe(() => {
+        transformer?.changeEnd$.subscribe((config) => {
             this._thumbSceneRender(pageId, slide);
+
+            // Persist moved/resized element positions back to SlideDataModel with undo/redo support
+            const model = this._getCurrUnitModel();
+            if (model && config.objects) {
+                const unitId = model.getUnitId();
+                const undoMutations: { id: string; params: IUpdateElementOperationParams }[] = [];
+                const redoMutations: { id: string; params: IUpdateElementOperationParams }[] = [];
+
+                config.objects.forEach((obj) => {
+                    const elementId = obj.oKey;
+                    const activePage = model.getActivePage();
+                    const element = activePage?.pageElements?.[elementId];
+                    if (element) {
+                        // Capture previous state for undo
+                        undoMutations.push({
+                            id: UpdateSlideElementOperation.id,
+                            params: {
+                                unitId,
+                                oKey: elementId,
+                                props: {
+                                    left: element.left,
+                                    top: element.top,
+                                    width: element.width,
+                                    height: element.height,
+                                },
+                            },
+                        });
+
+                        // New state for redo
+                        const newProps = {
+                            left: obj.left,
+                            top: obj.top,
+                            width: obj.width,
+                            height: obj.height,
+                        };
+                        redoMutations.push({
+                            id: UpdateSlideElementOperation.id,
+                            params: {
+                                unitId,
+                                oKey: elementId,
+                                props: newProps,
+                            },
+                        });
+
+                        // Execute the mutation to apply the change
+                        this._commandService.executeCommand(UpdateSlideElementOperation.id, {
+                            unitId,
+                            oKey: elementId,
+                            props: newProps,
+                        });
+                    }
+                });
+
+                // Push undo/redo pair to the service
+                if (undoMutations.length > 0) {
+                    this._undoRedoService.pushUndoRedo({
+                        unitID: unitId,
+                        undoMutations,
+                        redoMutations,
+                    });
+                }
+            }
         });
 
         transformer?.clearControl$.subscribe(() => {
@@ -470,9 +767,11 @@ export class SlideRenderController extends RxDisposable implements IRenderModule
         }
         const object = this._objectProvider.convertToRenderObject(element, scene);
         if (object) {
-            scene.addObject(object);
+            // Layer 2 = SLIDE (interactive), matching createPageScene's LAYER_Z_INDEX.SLIDE
+            object.evented = true;
+            scene.addObject(object, 2);
             scene.attachTransformerTo(object);
-            scene.getLayer().makeDirty();
+            scene.getLayer(2)?.makeDirty();
             return object;
         }
     }

@@ -15,12 +15,12 @@
  */
 
 import type { IAccessor, ICommand, SlideDataModel } from '@univerjs/core';
-import { BasicShapes, CommandType, generateRandomId, ICommandService, IUniverInstanceService, LocaleService, PageElementType } from '@univerjs/core';
+import { BasicShapes, CommandType, generateRandomId, ICommandService, IUndoRedoService, IUniverInstanceService, LocaleService, PageElementType } from '@univerjs/core';
 import { ObjectType } from '@univerjs/engine-render';
 
 import { ISidebarService } from '@univerjs/ui';
 import { COMPONENT_SLIDE_SIDEBAR } from '../../components/sidebar/Sidebar';
-import { CanvasView } from '../../controllers/canvas-view';
+import { AddSlideElementMutation, RemoveSlideElementMutation } from '../mutations/element.mutation';
 
 export interface IInsertShapeOperationParams {
     unitId: string;
@@ -31,27 +31,18 @@ export const InsertSlideShapeRectangleCommand: ICommand = {
     type: CommandType.COMMAND,
     handler: async (accessor: IAccessor) => {
         const commandService = accessor.get(ICommandService);
+        const undoRedoService = accessor.get(IUndoRedoService);
         const instanceService = accessor.get(IUniverInstanceService);
         const unitId = instanceService.getFocusedUnit()?.getUnitId();
-        return commandService.executeCommand(InsertSlideShapeRectangleOperation.id, { unitId });
-    },
-};
+        if (!unitId) return false;
 
-export const InsertSlideShapeRectangleOperation: ICommand<IInsertShapeOperationParams> = {
-    id: 'slide.operation.insert-float-shape.rectangle',
-    type: CommandType.OPERATION,
-    handler: async (accessor, params: IInsertShapeOperationParams) => {
-        const id = generateRandomId(6);
-
-        const univerInstanceService = accessor.get(IUniverInstanceService);
-        // const slideData = univerInstanceService.getCurrentUnitForType<SlideDataModel>(UniverInstanceType.UNIVER_SLIDE);
-
-        const unitId = params.unitId;
-        const slideData = univerInstanceService.getUnit<SlideDataModel>(unitId);
-
+        const slideData = instanceService.getUnit<SlideDataModel>(unitId);
         if (!slideData) return false;
 
-        const activePage = slideData.getActivePage()!;
+        const activePage = slideData.getActivePage();
+        if (!activePage) return false;
+
+        const id = generateRandomId(6);
         const elements = Object.values(activePage.pageElements);
         const maxIndex = (elements?.length) ? Math.max(...elements.map((element) => element.zIndex)) : 20;
         const data = {
@@ -74,16 +65,30 @@ export const InsertSlideShapeRectangleOperation: ICommand<IInsertShapeOperationP
                 },
             },
         };
-        activePage.pageElements[id] = data;
-        slideData.updatePage(activePage.id, activePage);
 
-        const canvasview = accessor.get(CanvasView);
-        const sceneObject = canvasview.createObjectToPage(data, activePage.id, unitId);
-        if (sceneObject) {
-            canvasview.setObjectActiveByPage(sceneObject, activePage.id, unitId);
-        }
+        const addParams = { unitId, pageId: activePage.id, element: data };
+        const result = commandService.executeCommand(AddSlideElementMutation.id, addParams);
+        if (!result) return false;
+
+        undoRedoService.pushUndoRedo({
+            unitID: unitId,
+            undoMutations: [{ id: RemoveSlideElementMutation.id, params: { unitId, pageId: activePage.id, elementId: id, elementData: data } }],
+            redoMutations: [{ id: AddSlideElementMutation.id, params: addParams }],
+        });
 
         return true;
+    },
+};
+
+/**
+ * @deprecated Use InsertSlideShapeRectangleCommand instead.
+ */
+export const InsertSlideShapeRectangleOperation: ICommand<IInsertShapeOperationParams> = {
+    id: 'slide.operation.insert-float-shape.rectangle',
+    type: CommandType.OPERATION,
+    handler: async (accessor, params: IInsertShapeOperationParams) => {
+        const commandService = accessor.get(ICommandService);
+        return commandService.executeCommand(InsertSlideShapeRectangleCommand.id);
     },
 };
 
@@ -119,7 +124,7 @@ export const ToggleSlideEditSidebarOperation: ICommand = {
                 header: { title: localeService.t(title) },
                 children: { label: children },
                 onClose: () => {
-                        // drawingManagerService.focusDrawing(null);
+                    // drawingManagerService.focusDrawing(null);
                 },
                 width: 360,
             });
@@ -135,27 +140,18 @@ export const InsertSlideShapeEllipseCommand: ICommand = {
     type: CommandType.COMMAND,
     handler: async (accessor: IAccessor) => {
         const commandService = accessor.get(ICommandService);
+        const undoRedoService = accessor.get(IUndoRedoService);
         const instanceService = accessor.get(IUniverInstanceService);
         const unitId = instanceService.getFocusedUnit()?.getUnitId();
-        return commandService.executeCommand(InsertSlideShapeEllipseOperation.id, { unitId });
-    },
-};
+        if (!unitId) return false;
 
-export const InsertSlideShapeEllipseOperation: ICommand<IInsertShapeOperationParams> = {
-    id: 'slide.operation.insert-float-shape.ellipse',
-    type: CommandType.OPERATION,
-    handler: async (accessor, params: IInsertShapeOperationParams) => {
-        const id = generateRandomId(6);
-
-        const univerInstanceService = accessor.get(IUniverInstanceService);
-        // const slideData = univerInstanceService.getCurrentUnitForType<SlideDataModel>(UniverInstanceType.UNIVER_SLIDE);
-
-        const unitId = params.unitId;
-        const slideData = univerInstanceService.getUnit<SlideDataModel>(unitId);
-
+        const slideData = instanceService.getUnit<SlideDataModel>(unitId);
         if (!slideData) return false;
 
-        const activePage = slideData.getActivePage()!;
+        const activePage = slideData.getActivePage();
+        if (!activePage) return false;
+
+        const id = generateRandomId(6);
         const elements = Object.values(activePage.pageElements);
         const maxIndex = (elements?.length) ? Math.max(...elements.map((element) => element.zIndex)) : 20;
         const data = {
@@ -179,15 +175,29 @@ export const InsertSlideShapeEllipseOperation: ICommand<IInsertShapeOperationPar
                 },
             },
         };
-        activePage.pageElements[id] = data;
-        slideData.updatePage(activePage.id, activePage);
 
-        const canvasview = accessor.get(CanvasView);
-        const sceneObject = canvasview.createObjectToPage(data, activePage.id, unitId);
-        if (sceneObject) {
-            canvasview.setObjectActiveByPage(sceneObject, activePage.id, unitId);
-        }
+        const addParams = { unitId, pageId: activePage.id, element: data };
+        const result = commandService.executeCommand(AddSlideElementMutation.id, addParams);
+        if (!result) return false;
+
+        undoRedoService.pushUndoRedo({
+            unitID: unitId,
+            undoMutations: [{ id: RemoveSlideElementMutation.id, params: { unitId, pageId: activePage.id, elementId: id, elementData: data } }],
+            redoMutations: [{ id: AddSlideElementMutation.id, params: addParams }],
+        });
 
         return true;
+    },
+};
+
+/**
+ * @deprecated Use InsertSlideShapeEllipseCommand instead.
+ */
+export const InsertSlideShapeEllipseOperation: ICommand<IInsertShapeOperationParams> = {
+    id: 'slide.operation.insert-float-shape.ellipse',
+    type: CommandType.OPERATION,
+    handler: async (accessor, params: IInsertShapeOperationParams) => {
+        const commandService = accessor.get(ICommandService);
+        return commandService.executeCommand(InsertSlideShapeEllipseCommand.id);
     },
 };

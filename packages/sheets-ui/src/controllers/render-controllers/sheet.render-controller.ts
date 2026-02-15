@@ -535,7 +535,9 @@ export class SheetRenderController extends RxDisposable implements IRenderModule
     }
 
     private _rangeToBounds(ranges: IRange[]) {
-        const skeleton = this._sheetSkeletonManagerService.getCurrentParam()!.skeleton;
+        const currentParam = this._sheetSkeletonManagerService.getCurrentParam();
+        if (!currentParam?.skeleton) return [];
+        const skeleton = currentParam.skeleton;
         const { rowHeightAccumulation, columnWidthAccumulation, rowHeaderWidth, columnHeaderHeight } = skeleton;
 
         const dirtyBounds: IViewportInfos[] = [];

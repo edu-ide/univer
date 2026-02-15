@@ -249,9 +249,9 @@ export class InputManager extends Disposable {
         const currentObject = this._getObjectAtPos(evt.offsetX, evt.offsetY);
         const isStop = currentObject?.triggerMouseWheel(evt);
 
-        // for doc
+        // for doc (Slide mode may not have a main viewport)
         const viewportMain = this._scene.getMainViewport();
-        viewportMain.onMouseWheel$.emitEvent(evt);
+        viewportMain?.onMouseWheel$.emitEvent(evt);
 
         if (!isStop && this._shouldDispatchEventToScene(currentObject)) {
             this._scene.onMouseWheel$.emitEvent(evt);
@@ -381,9 +381,9 @@ export class InputManager extends Disposable {
                         break;
                     case 'dragover': {
                         const validIndex = eventData.inputIndex === PointerInput.Horizontal ||
-                        eventData.inputIndex === PointerInput.Vertical ||
-                        eventData.inputIndex === PointerInput.DeltaHorizontal ||
-                        eventData.inputIndex === PointerInput.DeltaVertical;
+                            eventData.inputIndex === PointerInput.Vertical ||
+                            eventData.inputIndex === PointerInput.DeltaHorizontal ||
+                            eventData.inputIndex === PointerInput.DeltaVertical;
                         if (enableMove && validIndex) {
                             this._onDragOver(evt as IDragEvent);
                         }
@@ -443,20 +443,20 @@ export class InputManager extends Disposable {
     // The return value of this method is so weird! return type is object and boolean???
     // TODO @lumixraku
     // private _shouldDispatchEventToScene(isTrigger: boolean, currentObject: Nullable<Scene | BaseObject>) {
-        // let notObject = false;
-        // if (currentObject == null) {
-        //     notObject = true;
-        // }
+    // let notObject = false;
+    // if (currentObject == null) {
+    //     notObject = true;
+    // }
 
-        // let isNotInSceneViewer = true;
-        // if (currentObject && currentObject.classType === RENDER_CLASS_TYPE.BASE_OBJECT) {
-        //     const scene = (currentObject as BaseObject).getScene() as Scene;
-        //     if (scene) {
-        //         const parent = scene.getParent();
-        //         isNotInSceneViewer = parent.classType !== RENDER_CLASS_TYPE.SCENE_VIEWER;
-        //     }
-        // }
-        // return (!this._scene.objectsEvented && isTrigger && isNotInSceneViewer) || notObject;
+    // let isNotInSceneViewer = true;
+    // if (currentObject && currentObject.classType === RENDER_CLASS_TYPE.BASE_OBJECT) {
+    //     const scene = (currentObject as BaseObject).getScene() as Scene;
+    //     if (scene) {
+    //         const parent = scene.getParent();
+    //         isNotInSceneViewer = parent.classType !== RENDER_CLASS_TYPE.SCENE_VIEWER;
+    //     }
+    // }
+    // return (!this._scene.objectsEvented && isTrigger && isNotInSceneViewer) || notObject;
 
     // }
 

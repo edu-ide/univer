@@ -14,17 +14,20 @@
  * limitations under the License.
  */
 
-import { CommandType, IUniverInstanceService, PageElementType, UniverInstanceType } from '@univerjs/core';
+import { CommandType, ICommandService, IUndoRedoService, IUniverInstanceService, PageElementType, UniverInstanceType } from '@univerjs/core';
 import { DRAWING_IMAGE_ALLOW_IMAGE_LIST, getImageSize, IImageIoService } from '@univerjs/drawing';
 import { ILocalFileService } from '@univerjs/ui';
 import type { ICommand, SlideDataModel } from '@univerjs/core';
-import { CanvasView } from '../../controllers/canvas-view';
+import { AddSlideElementMutation, RemoveSlideElementMutation } from '../mutations/element.mutation';
 
 export const InsertSlideFloatImageCommand: ICommand<{}> = {
     id: 'slide.command.insert-float-image',
     type: CommandType.COMMAND,
     handler: async (accessor, params) => {
         const univerInstanceService = accessor.get(IUniverInstanceService);
+        const commandService = accessor.get(ICommandService);
+        const undoRedoService = accessor.get(IUndoRedoService);
+
         const unitId = univerInstanceService.getCurrentUnitForType(UniverInstanceType.UNIVER_SLIDE)?.getUnitId();
         if (!unitId) return false;
 
@@ -68,14 +71,16 @@ export const InsertSlideFloatImageCommand: ICommand<{}> = {
                 },
             },
         };
-        activePage.pageElements[imageId] = data;
-        slideData.updatePage(activePage.id, activePage);
 
-        const canvasView = accessor.get(CanvasView);
-        const sceneObject = canvasView.createObjectToPage(data, activePage.id, unitId);
-        if (sceneObject) {
-            canvasView.setObjectActiveByPage(sceneObject, activePage.id, unitId);
-        }
+        const addParams = { unitId, pageId: activePage.id, element: data };
+        const result = commandService.executeCommand(AddSlideElementMutation.id, addParams);
+        if (!result) return false;
+
+        undoRedoService.pushUndoRedo({
+            unitID: unitId,
+            undoMutations: [{ id: RemoveSlideElementMutation.id, params: { unitId, pageId: activePage.id, elementId: imageId, elementData: data } }],
+            redoMutations: [{ id: AddSlideElementMutation.id, params: addParams }],
+        });
 
         return true;
     },

@@ -154,9 +154,13 @@ export class SlideAdaptor extends ObjectAdaptor {
 
         const { width: pageWidth = 0, height: pageHeight = 0 } = pageSize;
 
-        // Image background: render as full-page Image object
+        console.log(`🎨 [BG] _addBackgroundRect called: fill=${JSON.stringify(fill)}, pageSize=${pageWidth}x${pageHeight}`);
+
+        // Image background: pre-load the image, then add to scene
         if (fill.image) {
-            // White base rect behind image - layer 0, low zIndex
+            console.log(`🎨 [BG] Creating IMAGE background: url length=${fill.image.length}`);
+
+            // White base rect behind image
             const baseRect = new Rect('canvas-base', {
                 left: 0,
                 top: 0,
@@ -168,23 +172,51 @@ export class SlideAdaptor extends ObjectAdaptor {
             });
             scene.addObject(baseRect, 0);
 
-            const bgImage = new Image('canvas-bg', {
-                url: fill.image,
-                left: 0,
-                top: 0,
-                width: pageWidth,
-                height: pageHeight,
-                zIndex: -1,
-                evented: false,
-                forceRender: true,
-            });
-            scene.addObject(bgImage, 0);
+            // Pre-load the image as HTMLImageElement so it can be
+            // passed already-decoded to the Univer Image object.
+            // This avoids the async-load race where the first
+            // render frame fires before the image is ready.
+            const nativeImg = new globalThis.Image();
+            nativeImg.crossOrigin = 'anonymous';
+            nativeImg.onload = () => {
+                console.log(`🎨 [BG] Image loaded: ${nativeImg.naturalWidth}x${nativeImg.naturalHeight}`);
+                const bgImage = new Image('canvas-bg', {
+                    image: nativeImg,
+                    left: 0,
+                    top: 0,
+                    width: pageWidth,
+                    height: pageHeight,
+                    zIndex: -1,
+                    evented: false,
+                    forceRender: true,
+                });
+                scene.addObject(bgImage, 0);
+                scene.makeDirty(true);
+            };
+            nativeImg.onerror = (e) => {
+                console.error(`🎨 [BG] Image load FAILED:`, e);
+            };
+            nativeImg.src = fill.image;
             return;
         }
 
         // Gradient background: use Canvas native gradient
         if (fill.gradient && fill.gradient.stops.length >= 2) {
             const { angle = 0, stops } = fill.gradient;
+
+            // White base rect behind gradient — ensures alpha/transparent areas
+            // show white instead of canvas default black
+            const gradBase = new Rect('canvas-grad-base', {
+                left: 0,
+                top: 0,
+                width: pageWidth,
+                height: pageHeight,
+                fill: 'rgba(255,255,255,1)',
+                zIndex: -1,
+                evented: false,
+            });
+            scene.addObject(gradBase, 0);
+
             const page = new Rect('canvas', {
                 left: 0,
                 top: 0,

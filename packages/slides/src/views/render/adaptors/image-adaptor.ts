@@ -54,6 +54,7 @@ export class ImageAdaptor extends ObjectAdaptor {
         const { imageProperties, placeholder, link } = image;
 
         const contentUrl = imageProperties?.contentUrl || '';
+        console.log(`🖼️ [ImageAdaptor] ${id}: url=${contentUrl.substring(0, 50)}... len=${contentUrl.length} box=${width}×${height}`);
 
         return new Image(id, {
             url: contentUrl,

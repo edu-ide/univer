@@ -302,7 +302,10 @@ export class DocumentViewModel implements IDisposable {
     reset(documentDataModel: DocumentDataModel) {
         this._documentDataModel = documentDataModel;
 
-        const body = documentDataModel.getBody()!;
+        const body = documentDataModel.getBody();
+        if (!body) {
+            return;
+        }
 
         const { sectionList, tableNodeCache } = parseDataStreamToTree(body.dataStream, body.tables);
 
@@ -465,14 +468,6 @@ export class DocumentViewModel implements IDisposable {
         const textRuns = this.getBody()?.textRuns ?? [];
         this._textRunsCache.clear();
 
-        // DEBUG: Log textRuns to verify they are being loaded
-        if (textRuns.length > 0) {
-            console.log('[DocumentViewModel] Building textRuns cache:', {
-                count: textRuns.length,
-                firstRun: JSON.stringify(textRuns[0]),
-                dataStream: this.getBody()?.dataStream?.substring(0, 20)
-            });
-        }
 
         for (const textRun of textRuns) {
             const { st, ed } = textRun;
