@@ -16,16 +16,17 @@
 
 import type { IMutationInfo, IRange, Nullable } from '@univerjs/core';
 import type { IDrawingJsonUndo1 } from '@univerjs/drawing';
+import type { IDiscreteRange } from '@univerjs/sheets';
 import type { ISheetDrawing, ISheetImage } from '@univerjs/sheets-drawing';
-import type { IDiscreteRange, IPasteHookValueType, ISheetDiscreteRangeLocation } from '@univerjs/sheets-ui';
+import type { IPasteHookValueType, ISheetDiscreteRangeLocation } from '@univerjs/sheets-ui';
 import type { IDeleteDrawingCommandParams } from '../commands/commands/interfaces';
 import { Disposable, DrawingTypeEnum, generateRandomId, ICommandService } from '@univerjs/core';
 import { IDrawingManagerService, ImageSourceType } from '@univerjs/drawing';
 import { IRenderManagerService } from '@univerjs/engine-render';
+import { discreteRangeToRange } from '@univerjs/sheets';
 import { DrawingApplyType, SetDrawingApplyMutation, SheetDrawingAnchorType } from '@univerjs/sheets-drawing';
 import {
     COPY_TYPE,
-    discreteRangeToRange,
     ISheetClipboardService,
     ISheetSelectionRenderService,
     PREDEFINED_HOOK_NAME_PASTE,
@@ -33,7 +34,7 @@ import {
     virtualizeDiscreteRanges,
 } from '@univerjs/sheets-ui';
 import { IClipboardInterfaceService } from '@univerjs/ui';
-import { transformToDrawingPosition } from '../basics/transform-position';
+import { transformToAxisAlignPosition, transformToDrawingPosition } from '../basics/transform-position';
 import { InsertFloatImageCommand } from '../commands/commands/insert-image.command';
 import { RemoveSheetDrawingCommand } from '../commands/commands/remove-sheet-drawing.command';
 
@@ -313,6 +314,7 @@ export class SheetsDrawingCopyPasteController extends Disposable {
                 return {
                     transform: newTransform,
                     sheetTransform: transformToDrawingPosition(newTransform, selectionRenderService) ?? sheetTransform,
+                    axisAlignSheetTransform: transformToAxisAlignPosition(newTransform, selectionRenderService) ?? sheetTransform,
                 };
             },
         });
@@ -324,6 +326,7 @@ export class SheetsDrawingCopyPasteController extends Disposable {
         getTransform: (transform: ISheetDrawing['transform'], sheetTransform: ISheetDrawing['sheetTransform']) => {
             transform: ISheetDrawing['transform'];
             sheetTransform: ISheetDrawing['sheetTransform'];
+            axisAlignSheetTransform: ISheetDrawing['sheetTransform'];
         };
         isCut: boolean;
     }) {
@@ -352,6 +355,7 @@ export class SheetsDrawingCopyPasteController extends Disposable {
                 drawingId: isCut ? drawing.drawingId : generateRandomId(),
                 transform: transformContext.transform,
                 sheetTransform: transformContext.sheetTransform,
+                axisAlignSheetTransform: transformContext.axisAlignSheetTransform,
             };
 
             if (isCut) {
@@ -459,26 +463,66 @@ export class SheetsDrawingCopyPasteController extends Disposable {
         return this._generateMutations(drawings, {
             unitId,
             subUnitId,
-            getTransform: (transform, sheetTransform) => ({
-                transform: {
+            getTransform: (transform, sheetTransform) => {
+                const newTransform = {
                     ...transform,
                     left: (transform?.left ?? 0) + leftOffset,
                     top: (transform?.top ?? 0) + topOffset,
-                },
-                sheetTransform: {
-                    ...sheetTransform,
-                    to: {
-                        ...sheetTransform.to,
-                        row: sheetTransform.to.row + rowOffset,
-                        column: sheetTransform.to.column + columnOffset,
+                };
+                const render = this._renderManagerService.getRenderById(unitId);
+                const selectionRenderService = render?.with(ISheetSelectionRenderService);
+
+                if (!selectionRenderService) {
+                    // todo ： if rotate has the angle, the axisAlignSheetTransform is not equal to sheetTransform, need to calculate the new axisAlignSheetTransform based on the new transform
+                    return {
+                        transform: newTransform,
+                        sheetTransform: {
+                            ...sheetTransform,
+                            to: {
+                                ...sheetTransform.to,
+                                row: sheetTransform.to.row + rowOffset,
+                                column: sheetTransform.to.column + columnOffset,
+                            },
+                            from: {
+                                ...sheetTransform.from,
+                                row: sheetTransform.from.row + rowOffset,
+                                column: sheetTransform.from.column + columnOffset,
+                            },
+                        },
+                        axisAlignSheetTransform: {
+                            ...sheetTransform,
+                            to: {
+                                ...sheetTransform.to,
+                                row: sheetTransform.to.row + rowOffset,
+                                column: sheetTransform.to.column + columnOffset,
+                            },
+                            from: {
+                                ...sheetTransform.from,
+                                row: sheetTransform.from.row + rowOffset,
+                                column: sheetTransform.from.column + columnOffset,
+                            },
+                        },
+                    };
+                }
+
+                return {
+                    transform: newTransform,
+                    sheetTransform: {
+                        ...sheetTransform,
+                        to: {
+                            ...sheetTransform.to,
+                            row: sheetTransform.to.row + rowOffset,
+                            column: sheetTransform.to.column + columnOffset,
+                        },
+                        from: {
+                            ...sheetTransform.from,
+                            row: sheetTransform.from.row + rowOffset,
+                            column: sheetTransform.from.column + columnOffset,
+                        },
                     },
-                    from: {
-                        ...sheetTransform.from,
-                        row: sheetTransform.from.row + rowOffset,
-                        column: sheetTransform.from.column + columnOffset,
-                    },
-                },
-            }),
+                    axisAlignSheetTransform: transformToAxisAlignPosition(newTransform, selectionRenderService) ?? sheetTransform,
+                };
+            },
             isCut: copyType === COPY_TYPE.CUT,
         });
     }

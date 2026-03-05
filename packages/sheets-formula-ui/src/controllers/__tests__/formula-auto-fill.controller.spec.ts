@@ -26,6 +26,10 @@ import {
 } from '@univerjs/core';
 import {
     AddWorksheetMergeMutation,
+    AutoFillCommand,
+    AutoFillController,
+    AutoFillService,
+    IAutoFillService,
     RangeProtectionRenderModel,
     RangeProtectionService,
     RemoveWorksheetMergeMutation,
@@ -33,18 +37,15 @@ import {
     SetSelectionsOperation,
     SheetsSelectionsService,
 } from '@univerjs/sheets';
+import { FormulaAutoFillController } from '@univerjs/sheets-formula';
 import {
-    AutoFillCommand,
-    AutoFillController,
-    AutoFillService,
-    IAutoFillService,
+    AutoFillUIController,
     ISheetSelectionRenderService,
     SheetSelectionRenderService,
     SheetsRenderService,
 } from '@univerjs/sheets-ui';
 import { IPlatformService, IShortcutService, PlatformService, ShortcutService } from '@univerjs/ui';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { FormulaAutoFillController } from '../formula-auto-fill.controller';
 import { createCommandTestBed } from './create-command-test-bed';
 
 class mockSheetsRenderService {
@@ -67,14 +68,15 @@ describe('Test auto fill with formula', () => {
     beforeEach(() => {
         const testBed = createCommandTestBed(undefined, [
             [ISheetSelectionRenderService, { useClass: SheetSelectionRenderService }],
-            [AutoFillController],
             [IAutoFillService, { useClass: AutoFillService }],
             [IShortcutService, { useClass: ShortcutService }],
             [IPlatformService, { useClass: PlatformService }],
+            [SheetsRenderService, { useClass: mockSheetsRenderService }],
+            [AutoFillController],
+            [AutoFillUIController],
             [FormulaAutoFillController],
             [RangeProtectionService],
             [RangeProtectionRenderModel],
-            [SheetsRenderService, { useClass: mockSheetsRenderService }],
         ]);
 
         univer = testBed.univer;
@@ -87,6 +89,7 @@ describe('Test auto fill with formula', () => {
         themeService.setTheme(newTheme);
 
         get(AutoFillController);
+        get(AutoFillUIController);
 
         commandService.registerCommand(SetRangeValuesMutation);
         commandService.registerCommand(SetSelectionsOperation);

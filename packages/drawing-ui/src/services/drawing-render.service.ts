@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
-import type { IDrawingSearch } from '@univerjs/core';
+import type { IDrawingSearch, Workbook } from '@univerjs/core';
 import type { IDocFloatDomData, IImageData } from '@univerjs/drawing';
 import type { IImageProps, IRectProps, Scene } from '@univerjs/engine-render';
-import { DrawingTypeEnum, IURLImageService } from '@univerjs/core';
+import { DrawingTypeEnum, IUniverInstanceService, IURLImageService, UniverInstanceType } from '@univerjs/core';
 import { getDrawingShapeKeyByDrawingSearch, IDrawingManagerService, IImageIoService, ImageSourceType } from '@univerjs/drawing';
 import { DRAWING_OBJECT_LAYER_INDEX, Image, Rect } from '@univerjs/engine-render';
 import { IGalleryService } from '@univerjs/ui';
@@ -30,10 +30,11 @@ export class DrawingRenderService {
         @IDrawingManagerService private readonly _drawingManagerService: IDrawingManagerService,
         @IImageIoService private readonly _imageIoService: IImageIoService,
         @IGalleryService private readonly _galleryService: IGalleryService,
-        @IURLImageService private readonly _urlImageService: IURLImageService
+        @IURLImageService private readonly _urlImageService: IURLImageService,
+        @IUniverInstanceService private readonly _univerInstanceService: IUniverInstanceService
     ) { }
 
-    // eslint-disable-next-line max-lines-per-function
+    // eslint-disable-next-line max-lines-per-function, complexity
     async renderImages(imageParam: IImageData, scene: Scene) {
         const {
             transform: singleTransform,
@@ -49,6 +50,7 @@ export class DrawingRenderService {
             isMultiTransform,
             transforms: multiTransforms,
         } = imageParam;
+
         if (drawingType !== DrawingTypeEnum.DRAWING_IMAGE) {
             return;
         }
@@ -57,19 +59,23 @@ export class DrawingRenderService {
             return;
         }
 
+        if (this._univerInstanceService.getUnitType(unitId) === UniverInstanceType.UNIVER_SHEET && subUnitId !== this._getActiveSheetId()) {
+            return;
+        }
+
         if (singleTransform == null) {
             return;
         }
 
         const transforms = isMultiTransform && multiTransforms ? multiTransforms : [singleTransform];
-
         const images = [];
+
         for (const transform of transforms) {
             const { left, top, width, height, angle, flipX, flipY, skewX, skewY } = transform;
             const index = transforms.indexOf(transform);
             const imageShapeKey = getDrawingShapeKeyByDrawingSearch({ unitId, subUnitId, drawingId }, isMultiTransform ? index : undefined);
-            const imageShape = scene.getObject(imageShapeKey);
 
+            const imageShape = scene.getObject(imageShapeKey);
             if (imageShape != null) {
                 imageShape.transformByState({ left, top, width, height, angle, flipX, flipY, skewX, skewY });
                 continue;
@@ -116,10 +122,6 @@ export class DrawingRenderService {
                 this._imageIoService.addImageSourceCache(source, imageSourceType, image.getNative());
             }
 
-            if (!this._drawingManagerService.getDrawingVisible()) {
-                continue;
-            }
-
             scene.addObject(image, DRAWING_OBJECT_LAYER_INDEX);
             if (this._drawingManagerService.getDrawingEditable()) {
                 scene.attachTransformerTo(image);
@@ -138,6 +140,13 @@ export class DrawingRenderService {
         }
 
         return images;
+    }
+
+    private _getActiveSheetId(): string | undefined {
+        return this._univerInstanceService
+            .getCurrentUnitOfType<Workbook>(UniverInstanceType.UNIVER_SHEET)
+            ?.getActiveSheet()
+            ?.getSheetId();
     }
 
     renderFloatDom(param: IDocFloatDomData, scene: Scene) {

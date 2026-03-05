@@ -357,18 +357,34 @@ export class SpreadsheetSkeleton extends SheetSkeleton {
 
         if (visibleEndColumn === -1 || visibleEndRow === -1) return;
 
-        const mergeRanges = this.getCurrentRowColumnSegmentMergeData(this._drawingRange);
-        for (const mergeRange of mergeRanges) {
-            this._setStylesCacheForOneCell(mergeRange.startRow, mergeRange.startColumn, {
-                mergeRange,
-            });
-        }
+        const mergeVisibleRanges: IRange[] = [];
+        let mergeVisibleRangeStartRow = visibleStartRow;
 
         // expandStartCol & expandEndCol is slightly expand curr col range. This is for calculating text for overflow situations.
         const expandStartCol = Math.max(0, visibleStartColumn - EXPAND_SIZE_FOR_RENDER_OVERFLOW);
         const expandEndCol = Math.min(columnWidthAccumulation.length - 1, visibleEndColumn + EXPAND_SIZE_FOR_RENDER_OVERFLOW);
         for (let r = visibleStartRow; r <= visibleEndRow; r++) {
-            if (this.worksheet.getRowVisible(r) === false) continue;
+            if (this.worksheet.getRowVisible(r) === false) {
+                if (mergeVisibleRangeStartRow < r) {
+                    mergeVisibleRanges.push({
+                        startRow: mergeVisibleRangeStartRow,
+                        endRow: r - 1,
+                        startColumn: visibleStartColumn,
+                        endColumn: visibleEndColumn,
+                    });
+                }
+                mergeVisibleRangeStartRow = r + 1;
+                continue;
+            };
+
+            if (r === visibleEndRow) {
+                mergeVisibleRanges.push({
+                    startRow: mergeVisibleRangeStartRow,
+                    endRow: r,
+                    startColumn: visibleStartColumn,
+                    endColumn: visibleEndColumn,
+                });
+            }
 
             for (let c = visibleStartColumn; c <= visibleEndColumn; c++) {
                 this._setStylesCacheForOneCell(r, c, { cacheItem: { bg: true, border: true } });
@@ -384,6 +400,17 @@ export class SpreadsheetSkeleton extends SheetSkeleton {
             for (let c = visibleEndColumn + 1; c < expandEndCol; c++) {
                 this._setStylesCacheForOneCell(r, c, { cacheItem: { bg: false, border: false } });
             }
+        }
+
+        const mergeRanges: IRange[] = [];
+        for (const mergeVisibleRange of mergeVisibleRanges) {
+            const mergeRangeInVisible = this.getCurrentRowColumnSegmentMergeData(mergeVisibleRange);
+            mergeRanges.push(...mergeRangeInVisible);
+        }
+        for (const mergeRange of mergeRanges) {
+            this._setStylesCacheForOneCell(mergeRange.startRow, mergeRange.startColumn, {
+                mergeRange,
+            });
         }
 
         return this;
@@ -1268,7 +1295,7 @@ export class SpreadsheetSkeleton extends SheetSkeleton {
             };
         }
 
-        return this.worksheet.getSpanModel().getMergedCellRangeForSkeleton(range.startRow, range.startColumn, range.endRow, range.endColumn);
+        return this.worksheet.getMergedCellRange(range.startRow, range.startColumn, range.endRow, range.endColumn);
     }
 
     override resetCache(): void {

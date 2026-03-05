@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import type { IAccessor, IRange, Nullable, Workbook } from '@univerjs/core';
+import type { IAccessor, IDrawingParam, IRange, Nullable, Workbook } from '@univerjs/core';
 import type { IImageData, IImageIoServiceParam } from '@univerjs/drawing';
 import type { IRenderContext, IRenderModule } from '@univerjs/engine-render';
 import type { ISheetLocationBase, WorkbookSelectionModel } from '@univerjs/sheets';
@@ -30,7 +30,7 @@ import { SetRangeValuesCommand, SheetsSelectionsService } from '@univerjs/sheets
 import { ISheetDrawingService } from '@univerjs/sheets-drawing';
 import { attachRangeWithCoord, ISheetSelectionRenderService, SheetSkeletonManagerService } from '@univerjs/sheets-ui';
 import { ILocalFileService, IMessageService } from '@univerjs/ui';
-import { drawingPositionToTransform, transformToDrawingPosition } from '../basics/transform-position';
+import { drawingPositionToTransform, transformToAxisAlignPosition, transformToDrawingPosition } from '../basics/transform-position';
 import { GroupSheetDrawingCommand } from '../commands/commands/group-sheet-drawing.command';
 import { InsertSheetDrawingCommand } from '../commands/commands/insert-sheet-drawing.command';
 import { SetDrawingArrangeCommand } from '../commands/commands/set-drawing-arrange.command';
@@ -209,6 +209,7 @@ export class SheetDrawingUpdateController extends Disposable implements IRenderM
             return;
         }
 
+        const newTransform = drawingPositionToTransform(sheetTransform, this._selectionRenderService, this._skeletonManagerService)!;
         const sheetDrawingParam: ISheetDrawing = {
             unitId,
             subUnitId,
@@ -216,8 +217,9 @@ export class SheetDrawingUpdateController extends Disposable implements IRenderM
             drawingType: DrawingTypeEnum.DRAWING_IMAGE,
             imageSourceType,
             source,
-            transform: drawingPositionToTransform(sheetTransform, this._selectionRenderService, this._skeletonManagerService),
+            transform: newTransform,
             sheetTransform,
+            axisAlignSheetTransform: transformToAxisAlignPosition(newTransform, this._selectionRenderService) ?? sheetTransform,
         };
 
         return this._commandService.executeCommand(InsertSheetDrawingCommand.id, {
@@ -574,8 +576,9 @@ export class SheetDrawingUpdateController extends Disposable implements IRenderM
                 }
 
                 const sheetTransform = transformToDrawingPosition({ ...sheetDrawing.transform, ...transform }, this._selectionRenderService);
+                const axisAlignSheetTransform = transformToAxisAlignPosition({ ...sheetDrawing.transform, ...transform }, this._selectionRenderService);
 
-                if (sheetTransform == null) {
+                if (sheetTransform == null || axisAlignSheetTransform == null) {
                     return;
                 }
 
@@ -587,6 +590,7 @@ export class SheetDrawingUpdateController extends Disposable implements IRenderM
                     ...param,
                     transform: { ...sheetDrawing.transform, ...transform, ...drawingPositionToTransform(sheetTransform, this._selectionRenderService, this._skeletonManagerService) },
                     sheetTransform: { ...sheetTransform },
+                    axisAlignSheetTransform: { ...axisAlignSheetTransform },
                 };
 
                 drawings.push(newDrawing);
@@ -601,15 +605,81 @@ export class SheetDrawingUpdateController extends Disposable implements IRenderM
         }));
     }
 
+    private _getSheetTransformByParam(param: IDrawingParam): Nullable<{
+        sheetTransform: ISheetDrawingPosition;
+        axisAlignSheetTransform: ISheetDrawingPosition;
+    }> {
+        const { unitId, subUnitId, drawingId, transform } = param;
+        if (transform == null) {
+            return null;
+        }
+        const sheetDrawing = this._sheetDrawingService.getDrawingByParam({ unitId, subUnitId, drawingId });
+
+        if (sheetDrawing == null || sheetDrawing.unitId !== this._context.unitId) {
+            return null;
+        }
+        const sheetTransform = transformToDrawingPosition({ ...sheetDrawing.transform, ...transform }, this._selectionRenderService);
+
+        const axisAlignSheetTransform = transformToAxisAlignPosition({ ...sheetDrawing.transform, ...transform }, this._selectionRenderService);
+
+        if (sheetTransform == null || axisAlignSheetTransform == null) {
+            return null;
+        }
+        return { sheetTransform, axisAlignSheetTransform };
+    }
+
     private _groupDrawingListener() {
         this.disposeWithMe(this._drawingManagerService.featurePluginGroupUpdate$.subscribe((params) => {
-            this._commandService.executeCommand(GroupSheetDrawingCommand.id, params);
-            const { unitId, subUnitId, drawingId } = params[0].parent;
-            this._commandService.syncExecuteCommand(SetDrawingSelectedOperation.id, [{ unitId, subUnitId, drawingId }]);
+            const grpParams = [];
+            for (const param of params) {
+                const sheetTransform = this._getSheetTransformByParam(param.parent);
+
+                const children = [];
+                for (const child of param.children) {
+                    const childSheetTransformInfo = this._getSheetTransformByParam(child);
+                    if (childSheetTransformInfo != null) {
+                        children.push({
+                            ...child,
+                            sheetTransform: childSheetTransformInfo.sheetTransform,
+                            axisAlignSheetTransform: childSheetTransformInfo.axisAlignSheetTransform,
+                        });
+                    }
+                }
+
+                const grpParam = {
+                    parent: { ...param.parent, sheetTransform },
+                    children,
+
+                };
+                grpParams.push(grpParam);
+            }
+            if (grpParams.length > 0) {
+                this._commandService.executeCommand(GroupSheetDrawingCommand.id, grpParams);
+                const { unitId, subUnitId, drawingId } = params[0].parent;
+                this._commandService.syncExecuteCommand(SetDrawingSelectedOperation.id, [{ unitId, subUnitId, drawingId }]);
+            }
         }));
 
         this.disposeWithMe(this._drawingManagerService.featurePluginUngroupUpdate$.subscribe((params) => {
-            this._commandService.executeCommand(UngroupSheetDrawingCommand.id, params);
+            const unGroupParams = [];
+            for (const param of params) {
+                const { children } = param;
+                const childParams = [];
+                for (const child of children) {
+                    const childSheetTransform = this._getSheetTransformByParam(child);
+                    if (childSheetTransform != null) {
+                        childParams.push({
+                            ...child,
+                            sheetTransform: childSheetTransform,
+                        });
+                    }
+                }
+                unGroupParams.push({
+                    ...param,
+                    children: childParams,
+                });
+            }
+            this._commandService.executeCommand(UngroupSheetDrawingCommand.id, unGroupParams);
         }));
     }
 

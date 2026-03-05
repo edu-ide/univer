@@ -49,7 +49,7 @@ import {
     SetWorksheetRowIsAutoHeightCommand,
     ToggleGridlinesCommand,
 } from '@univerjs/sheets';
-import { ContextMenuGroup, ContextMenuPosition, RibbonPosition, RibbonStartGroup } from '@univerjs/ui';
+import { ContextMenuGroup, ContextMenuPosition, RibbonDataGroup, RibbonPosition, RibbonStartGroup } from '@univerjs/ui';
 import {
     SheetCopyCommand,
     SheetCutCommand,
@@ -183,6 +183,7 @@ import {
     RenameSheetMenuItemFactory,
     ShowMenuItemFactory,
 } from './menu/sheet.menu';
+import { Text2NumberContextMenuItemFactory, Text2NumberToolbarMenuItemFactory, TEXT_TO_NUMBER_CONTEXT_MENU_ID, TEXT_TO_NUMBER_TOOLBAR_MENU_ID } from './menu/text-to-number.menu';
 
 export const menuSchema: MenuSchemaType = {
     [RibbonPosition.START]: {
@@ -295,8 +296,17 @@ export const menuSchema: MenuSchemaType = {
             },
         },
     },
+    [RibbonPosition.DATA]: {
+        [RibbonDataGroup.OTHERS]: {
+            [TEXT_TO_NUMBER_TOOLBAR_MENU_ID]: {
+                order: 0,
+                menuItemFactory: Text2NumberToolbarMenuItemFactory,
+            },
+        },
+    },
     [ContextMenuPosition.MAIN_AREA]: {
-        [ContextMenuGroup.FORMAT]: {
+        [ContextMenuGroup.QUICK]: ({
+            quickLayout: 'tile',
             [SheetCopyCommand.name]: {
                 order: 0,
                 menuItemFactory: CopyMenuItemFactory,
@@ -309,12 +319,14 @@ export const menuSchema: MenuSchemaType = {
                 order: 2,
                 menuItemFactory: PasteMenuItemFactory,
             },
+        } as MenuSchemaType),
+        [ContextMenuGroup.FORMAT]: {
             [COPY_SPECIAL_MENU_ID]: {
-                order: 2.5,
+                order: 0,
                 menuItemFactory: CopySpacialMenuItemFactory,
             },
             [PASTE_SPECIAL_MENU_ID]: {
-                order: 3,
+                order: 1,
                 menuItemFactory: PasteSpacialMenuItemFactory,
                 [SheetPasteValueCommand.id]: {
                     order: 0,
@@ -334,7 +346,7 @@ export const menuSchema: MenuSchemaType = {
                 },
             },
             [CLEAR_SELECTION_MENU_ID]: {
-                order: 4,
+                order: 2,
                 menuItemFactory: ClearSelectionMenuItemFactory,
                 [ClearSelectionContentCommand.id]: {
                     order: 0,
@@ -348,6 +360,10 @@ export const menuSchema: MenuSchemaType = {
                     order: 2,
                     menuItemFactory: ClearSelectionAllMenuItemFactory,
                 },
+            },
+            [TEXT_TO_NUMBER_CONTEXT_MENU_ID]: {
+                order: 3,
+                menuItemFactory: Text2NumberContextMenuItemFactory,
             },
         },
         [ContextMenuGroup.LAYOUT]: {
@@ -449,7 +465,8 @@ export const menuSchema: MenuSchemaType = {
         },
     },
     [ContextMenuPosition.COL_HEADER]: {
-        [ContextMenuGroup.FORMAT]: {
+        [ContextMenuGroup.QUICK]: ({
+            quickLayout: 'tile',
             [SheetCopyCommand.name]: {
                 order: 0,
                 menuItemFactory: CopyMenuItemFactory,
@@ -462,12 +479,14 @@ export const menuSchema: MenuSchemaType = {
                 order: 2,
                 menuItemFactory: PasteMenuItemFactory,
             },
+        } as MenuSchemaType),
+        [ContextMenuGroup.FORMAT]: {
             [COPY_SPECIAL_MENU_ID]: {
-                order: 2.5,
+                order: 0,
                 menuItemFactory: CopySpacialMenuItemFactory,
             },
             [PASTE_SPECIAL_MENU_ID]: {
-                order: 3,
+                order: 1,
                 menuItemFactory: PasteSpacialMenuItemFactory,
                 [SheetPasteValueCommand.id]: {
                     order: 0,
@@ -487,7 +506,7 @@ export const menuSchema: MenuSchemaType = {
                 },
             },
             [CLEAR_SELECTION_MENU_ID]: {
-                order: 4,
+                order: 2,
                 menuItemFactory: ClearSelectionMenuItemFactory,
                 [ClearSelectionContentCommand.id]: {
                     order: 0,
@@ -501,6 +520,10 @@ export const menuSchema: MenuSchemaType = {
                     order: 2,
                     menuItemFactory: ClearSelectionAllMenuItemFactory,
                 },
+            },
+            [TEXT_TO_NUMBER_CONTEXT_MENU_ID]: {
+                order: 3,
+                menuItemFactory: Text2NumberContextMenuItemFactory,
             },
         },
         [ContextMenuGroup.LAYOUT]: {
@@ -578,7 +601,8 @@ export const menuSchema: MenuSchemaType = {
         },
     },
     [ContextMenuPosition.ROW_HEADER]: {
-        [ContextMenuGroup.FORMAT]: {
+        [ContextMenuGroup.QUICK]: ({
+            quickLayout: 'tile',
             [SheetCopyCommand.name]: {
                 order: 0,
                 menuItemFactory: CopyMenuItemFactory,
@@ -591,12 +615,14 @@ export const menuSchema: MenuSchemaType = {
                 order: 2,
                 menuItemFactory: PasteMenuItemFactory,
             },
+        } as MenuSchemaType),
+        [ContextMenuGroup.FORMAT]: {
             [COPY_SPECIAL_MENU_ID]: {
-                order: 2.5,
+                order: 0,
                 menuItemFactory: CopySpacialMenuItemFactory,
             },
             [PASTE_SPECIAL_MENU_ID]: {
-                order: 3,
+                order: 1,
                 menuItemFactory: PasteSpacialMenuItemFactory,
                 [SheetPasteValueCommand.id]: {
                     order: 0,
@@ -616,7 +642,7 @@ export const menuSchema: MenuSchemaType = {
                 },
             },
             [CLEAR_SELECTION_MENU_ID]: {
-                order: 4,
+                order: 2,
                 menuItemFactory: ClearSelectionMenuItemFactory,
                 [ClearSelectionContentCommand.id]: {
                     order: 0,
@@ -630,6 +656,10 @@ export const menuSchema: MenuSchemaType = {
                     order: 2,
                     menuItemFactory: ClearSelectionAllMenuItemFactory,
                 },
+            },
+            [TEXT_TO_NUMBER_CONTEXT_MENU_ID]: {
+                order: 3,
+                menuItemFactory: Text2NumberContextMenuItemFactory,
             },
         },
         [ContextMenuGroup.LAYOUT]: {

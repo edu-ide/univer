@@ -114,7 +114,7 @@ function SelectList(props: ISelectListProps) {
                           univer-w-full univer-rounded-md univer-border univer-border-[rgba(13,13,13,0.12)] univer-px-2
                           univer-py-1 univer-text-sm
                           focus:univer-border-primary-500 focus:univer-outline-none
-                          dark:!univer-text-white
+                          dark:!univer-bg-black dark:!univer-text-white
                         `}
                         type="text"
                         value={lowerFilter}
@@ -187,8 +187,8 @@ function SelectList(props: ISelectListProps) {
                             </div>
                             <div
                                 className={`
-                                  univer-ml-3 univer-h-4 univer-w-4 univer-flex-shrink-0 univer-flex-grow-0
-                                  univer-text-base univer-text-primary-500
+                                  univer-ml-3 univer-size-4 univer-flex-shrink-0 univer-flex-grow-0 univer-text-base
+                                  univer-text-primary-500
                                 `}
                             >
                                 {selected && <CheckMarkIcon className="univer-text-primary-600" />}

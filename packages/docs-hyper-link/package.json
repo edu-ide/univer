@@ -1,6 +1,6 @@
 {
     "name": "@univerjs/docs-hyper-link",
-    "version": "0.15.2",
+    "version": "0.16.1",
     "private": false,
     "description": "Univer thread comment plugin",
     "author": "DreamNum <developer@univer.ai>",
@@ -62,6 +62,6 @@
         "@univerjs-infra/shared": "workspace:*",
         "typescript": "^5.9.3",
         "vite": "^7.3.1",
-        "vitest": "^4.0.16"
+        "vitest": "^4.0.18"
     }
 }

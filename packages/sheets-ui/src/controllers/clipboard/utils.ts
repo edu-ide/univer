@@ -19,13 +19,13 @@
 import type { IAccessor, IBorderData, ICellData, ICustomRange, IDocumentBody, IMutationInfo, IParagraph, IRange, IStyleData, Nullable } from '@univerjs/core';
 import type {
     IAddWorksheetMergeMutationParams,
+    IDiscreteRange,
     IMoveRangeMutationParams,
     IRemoveWorksheetMergeMutationParams,
     ISetRangeValuesMutationParams,
     ISetSelectionsOperationParams,
 } from '@univerjs/sheets';
 import type { ICellDataWithSpanInfo, ICopyPastePayload, ISheetDiscreteRangeLocation } from '../../services/clipboard/type';
-import type { IDiscreteRange } from '../utils/range-tools';
 import {
     cellToRange,
     CellValueType,
@@ -48,6 +48,7 @@ import { DEFAULT_PADDING_DATA } from '@univerjs/engine-render';
 import {
     AddMergeUndoMutationFactory,
     AddWorksheetMergeMutation,
+    discreteRangeToRange,
     getAddMergeMutationRangeByType,
     getPrimaryForRange,
     getSheetCommandTarget,
@@ -63,7 +64,7 @@ import {
 } from '@univerjs/sheets';
 import { COPY_TYPE } from '../../services/clipboard/type';
 import { isRichText } from '../editor/editing.render-controller';
-import { discreteRangeToRange, virtualizeDiscreteRanges } from '../utils/range-tools';
+import { virtualizeDiscreteRanges } from '../utils/range-tools';
 
 // if special paste need append mutations instead of replace the default, it can use this function to generate default mutations.
 /**
@@ -369,7 +370,7 @@ export function getSetCellValueMutations(
             if (isTextFormat(style?.n?.pattern)) {
                 cellValue.t = CellValueType.STRING;
             } else {
-                const content = String(value.v);
+                const content = String(value.v).trim();
                 const numfmtValue = getNumfmtParseValueFilter(content);
                 if (numfmtValue?.v !== undefined && typeof numfmtValue.v === 'number') {
                     // If the numeric string will lose precision when converted to a number, set the cell type to force string
@@ -479,7 +480,7 @@ export function getSetCellStyleMutations(
             }
             (newValue.s as IStyleData).n = style?.n;
         } else {
-            const content = String(value.v);
+            const content = String(value.v).trim();
             const numfmtValue = getNumfmtParseValueFilter(content);
             if (numfmtValue?.z) {
                 if (!newValue.s) {

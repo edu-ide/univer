@@ -141,7 +141,7 @@ export function Ribbon(props: IRibbonProps) {
                     ribbonService.setFakeToolbarVisible(false);
                 });
             }
-        }, 100));
+        }, 10));
 
         observer.observe(containerRef.current);
 
@@ -274,8 +274,8 @@ export function Ribbon(props: IRibbonProps) {
                                 overlay={(
                                     <div
                                         className={`
-                                          univer-box-border univer-grid
-                                          univer-max-w-[var(--radix-popper-available-width)] univer-gap-2 univer-p-2
+                                          univer-box-border univer-grid univer-max-w-[--radix-popper-available-width]
+                                          univer-gap-2 univer-p-2
                                         `}
                                     >
                                         {activeGroup.hiddenGroups.map((groupItem) => (
