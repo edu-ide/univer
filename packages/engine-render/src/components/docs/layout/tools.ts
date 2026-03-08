@@ -797,7 +797,7 @@ export function getFontConfigFromLastGlyph(
         marginLeft = 0,
     } = sectionBreakConfig;
     const { snapToGrid = BooleanNumber.TRUE } = paragraphStyle;
-    const pageWidth = pageSize.width || Number.POSITIVE_INFINITY - marginLeft - marginRight;
+    const pageWidth = (pageSize.width || Number.POSITIVE_INFINITY) - marginLeft - marginRight;
 
     const result = {
         fontStyle: fontStyle!,
@@ -883,7 +883,7 @@ export function getFontCreateConfig(
         ...textStyle,
     };
 
-    const pageWidth = pageSize.width || Number.POSITIVE_INFINITY - marginLeft - marginRight;
+    const pageWidth = (pageSize.width || Number.POSITIVE_INFINITY) - marginLeft - marginRight;
 
     const result = {
         fontStyle,

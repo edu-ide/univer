@@ -52,8 +52,11 @@ export function createTableSkeleton(
         let left = 0;
         let rowHeight = 0;
 
-        for (const cellNode of cellNodes) {
-            const col = cellNodes.indexOf(cellNode);
+        let actualCol = 0;
+        for (let cellIndex = 0; cellIndex < cellNodes.length; cellIndex++) {
+            const cellNode = cellNodes[cellIndex];
+            const sourceCell = rowSource.tableCells[cellIndex];
+            const columnSpan = sourceCell?.columnSpan ?? 1;
             const cellPageSkeleton = createSkeletonCellPages(
                 ctx,
                 viewModel,
@@ -61,7 +64,8 @@ export function createTableSkeleton(
                 sectionBreakConfig,
                 table,
                 row,
-                col
+                cellIndex,
+                actualCol
             )[0];
 
             const { marginTop = 0, marginBottom = 0 } = cellPageSkeleton;
@@ -71,6 +75,7 @@ export function createTableSkeleton(
             cellPageSkeleton.parent = rowSkeleton;
             rowSkeleton.cells.push(cellPageSkeleton);
             rowHeight = Math.max(rowHeight, pageHeight);
+            actualCol += columnSpan;
         }
 
         if (hRule === TableRowHeightRule.AT_LEAST) {
@@ -290,8 +295,12 @@ function dealWithTableRow(
 
     const rowHeights = [0];
 
-    for (const cellNode of cellNodes) {
-        const col = cellNodes.indexOf(cellNode);
+    let actualCol = 0;
+    for (let cellIndex = 0; cellIndex < cellNodes.length; cellIndex++) {
+        const cellNode = cellNodes[cellIndex];
+        const actualColumnIndex = actualCol;
+        const sourceCell = rowSource.tableCells[cellIndex];
+        const columnSpan = sourceCell?.columnSpan ?? 1;
         const cellPageSkeletons = createSkeletonCellPages(
             ctx,
             viewModel,
@@ -299,7 +308,8 @@ function dealWithTableRow(
             sectionBreakConfig,
             table,
             row,
-            col,
+            cellIndex,
+            actualColumnIndex,
             canRowSplit && !needOpenNewTable ? cache.remainHeight : availableHeight,
             pageContentHeight
         );
@@ -309,13 +319,18 @@ function dealWithTableRow(
             const colCount = cellNodes.length;
 
             // Fill the row with null cell pages.
+            let placeholderCol = 0;
             rowSkeleton.cells = [...new Array(colCount)].map((_, i) => {
+                const placeholderSourceCell = rowSource.tableCells[i];
+                const currentCol = placeholderCol;
+                placeholderCol += placeholderSourceCell?.columnSpan ?? 1;
                 const cellSkeleton = createNullCellPage(
                     ctx,
                     sectionBreakConfig,
                     table,
                     row,
-                    i
+                    i,
+                    currentCol
                 ).page;
 
                 cellSkeleton.parent = rowSkeleton;
@@ -337,9 +352,11 @@ function dealWithTableRow(
             const rowSke = rowSkeletons[pageIndex];
 
             cellPageSkeleton.parent = rowSke;
-            rowSke.cells[col] = cellPageSkeleton;
+            rowSke.cells[cellIndex] = cellPageSkeleton;
             rowHeights[pageIndex] = Math.max(rowHeights[pageIndex], cellPageHeight);
         }
+
+        actualCol += columnSpan;
     }
 
     for (const rowSke of rowSkeletons) {

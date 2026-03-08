@@ -291,6 +291,7 @@ export function createNullCellPage(
     tableConfig: ITable,
     row: number,
     col: number,
+    actualColumnIndex: number = col,
     availableHeight: number = Number.POSITIVE_INFINITY,
     maxCellPageHeight: number = Number.POSITIVE_INFINITY
 ) {
@@ -307,7 +308,7 @@ export function createNullCellPage(
     } = cellConfig.margin ?? cellMargin ?? {};
     const columnSpan = cellConfig.columnSpan ?? 1;
     const pageWidth = tableColumns
-        .slice(col, col + columnSpan)
+        .slice(actualColumnIndex, actualColumnIndex + columnSpan)
         .reduce((sum, column) => sum + (column?.size?.width?.v ?? 0), 0) || tableColumns[col].size.width.v;
     const pageHeight = maxCellPageHeight;
 
@@ -355,6 +356,7 @@ export function createSkeletonCellPages(
     tableConfig: ITable,
     row: number,
     col: number,
+    actualColumnIndex: number = col,
     availableHeight: number = Number.POSITIVE_INFINITY,
     maxCellPageHeight: number = Number.POSITIVE_INFINITY
 ) {
@@ -367,6 +369,7 @@ export function createSkeletonCellPages(
         tableConfig,
         row,
         col,
+        actualColumnIndex,
         availableHeight,
         maxCellPageHeight
     );
