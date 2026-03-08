@@ -305,7 +305,10 @@ export function createNullCellPage(
         top = { v: 5 },
         bottom = { v: 5 },
     } = cellConfig.margin ?? cellMargin ?? {};
-    const pageWidth = tableColumns[col].size.width.v;
+    const columnSpan = cellConfig.columnSpan ?? 1;
+    const pageWidth = tableColumns
+        .slice(col, col + columnSpan)
+        .reduce((sum, column) => sum + (column?.size?.width?.v ?? 0), 0) || tableColumns[col].size.width.v;
     const pageHeight = maxCellPageHeight;
 
     const cellSectionBreakConfig: ISectionBreakConfig = {
