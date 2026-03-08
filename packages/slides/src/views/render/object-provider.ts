@@ -33,13 +33,20 @@ export class ObjectProvider {
     convertToRenderObjects(pageElements: { [elementId: string]: IPageElement }, mainScene: Scene) {
         const pageKeys = Object.keys(pageElements);
         const objects: BaseObject[] = [];
+        console.log(`🔍 [ObjectProvider] convertToRenderObjects called with ${pageKeys.length} elements, ${this._adaptors.length} adaptors loaded`);
+        if (this._adaptors.length > 0) {
+            console.log(`🔍 [ObjectProvider] Adaptor types:`, this._adaptors.map((a: any) => `${a.constructor?.name || 'unknown'}(viewKey=${a.viewKey})`).join(', '));
+        }
         pageKeys.forEach((key) => {
             const pageElement = pageElements[key];
             const o = this._executor(pageElement, mainScene);
             if (o != null) {
                 objects.push(o);
+            } else {
+                console.warn(`⚠️ [ObjectProvider] Element ${key} (type=${pageElement.type}) returned null from _executor`);
             }
         });
+        console.log(`🔍 [ObjectProvider] Converted ${objects.length}/${pageKeys.length} elements to render objects`);
         return objects;
     }
 
@@ -51,9 +58,18 @@ export class ObjectProvider {
         const { id: pageElementId, type } = pageElement;
 
         for (const adaptor of this._adaptors) {
-            const o = adaptor.check(type)?.convert(pageElement, mainScene);
-            if (o != null) {
-                return o;
+            const checked = adaptor.check(type);
+            if (checked) {
+                try {
+                    const o = checked.convert(pageElement, mainScene);
+                    if (o != null) {
+                        return o;
+                    } else {
+                        console.warn(`⚠️ [ObjectProvider] Adaptor ${(adaptor as any).constructor?.name} check passed but convert returned null for ${pageElementId} (type=${type})`);
+                    }
+                } catch (err) {
+                    console.error(`❌ [ObjectProvider] Adaptor ${(adaptor as any).constructor?.name} convert threw for ${pageElementId} (type=${type}):`, err);
+                }
             }
         }
     }

@@ -15,8 +15,8 @@
  */
 
 import type { ICommand, IPageElement, SlideDataModel } from '@univerjs/core';
-import { CommandType, generateRandomId, ICommandService, IUniverInstanceService, PageElementType } from '@univerjs/core';
-import { CanvasView } from '../../controllers/canvas-view';
+import { CommandType, generateRandomId, ICommandService, IUndoRedoService, IUniverInstanceService, PageElementType } from '@univerjs/core';
+import { AddSlideElementMutation, RemoveSlideElementMutation } from '../mutations/element.mutation';
 
 export interface ISlideAddTextParam {
     text: string;
@@ -29,32 +29,22 @@ export const SlideAddTextCommand: ICommand = {
     handler: async (accessor) => {
         const commandService = accessor.get(ICommandService);
         const univerInstanceService = accessor.get(IUniverInstanceService);
+        const undoRedoService = accessor.get(IUndoRedoService);
         const unitId = univerInstanceService.getFocusedUnit()?.getUnitId();
-        return await commandService.executeCommand(SlideAddTextOperation.id, { unitId });
-    },
+        if (!unitId) return false;
 
-};
+        const slideData = univerInstanceService.getUnit<SlideDataModel>(unitId);
+        if (!slideData) return false;
 
-export const SlideAddTextOperation: ICommand<ISlideAddTextParam> = {
-    id: 'slide.operation.add-text',
-    type: CommandType.OPERATION,
-    handler: async (accessor, params: ISlideAddTextParam) => {
-        const unitId = params.unitId;
+        const activePage = slideData.getActivePage();
+        if (!activePage) return false;
 
         const elementId = generateRandomId(6);
         const defaultWidth = 220;
         const defaultheight = 40;
         const left = 230;
         const top = 142;
-        const textContent = params?.text || 'A New Text';
-
-        const univerInstanceService = accessor.get(IUniverInstanceService);
-        // const slideData = univerInstanceService.getCurrentUnitForType<SlideDataModel>(UniverInstanceType.UNIVER_SLIDE);
-
-        const slideData = univerInstanceService.getUnit<SlideDataModel>(unitId);
-        if (!slideData) return false;
-
-        const activePage = slideData.getActivePage()!;
+        const textContent = 'A New Text';
 
         const elements = Object.values(activePage.pageElements);
         const maxIndex = (elements?.length) ? Math.max(...elements.map((element) => element.zIndex)) : 21;
@@ -78,16 +68,34 @@ export const SlideAddTextOperation: ICommand<ISlideAddTextParam> = {
             },
         };
 
-        activePage.pageElements[elementId] = elementData;
-        slideData.updatePage(activePage.id, activePage);
+        const addParams = {
+            unitId,
+            pageId: activePage.id,
+            element: elementData,
+        };
 
-        const canvasview = accessor.get(CanvasView);
-        const sceneObject = canvasview.createObjectToPage(elementData, activePage.id, unitId);
-        // make object active: a control rect wrap the object.
-        if (sceneObject) {
-            canvasview.setObjectActiveByPage(sceneObject, activePage.id, unitId);
-        }
+        const result = commandService.executeCommand(AddSlideElementMutation.id, addParams);
+        if (!result) return false;
+
+        // Push undo/redo: undo = remove, redo = add
+        undoRedoService.pushUndoRedo({
+            unitID: unitId,
+            undoMutations: [{ id: RemoveSlideElementMutation.id, params: { unitId, pageId: activePage.id, elementId, elementData } }],
+            redoMutations: [{ id: AddSlideElementMutation.id, params: addParams }],
+        });
 
         return true;
+    },
+};
+
+/**
+ * @deprecated Use SlideAddTextCommand instead. Kept for backward compatibility.
+ */
+export const SlideAddTextOperation: ICommand<ISlideAddTextParam> = {
+    id: 'slide.operation.add-text',
+    type: CommandType.OPERATION,
+    handler: async (accessor, params: ISlideAddTextParam) => {
+        const commandService = accessor.get(ICommandService);
+        return commandService.executeCommand(SlideAddTextCommand.id);
     },
 };

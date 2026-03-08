@@ -16,11 +16,11 @@
 
 import type { Dependency } from '@univerjs/core';
 import type { Engine } from '@univerjs/engine-render';
-import { IConfigService, Inject, Injector, merge, Plugin, UniverInstanceType } from '@univerjs/core';
+import { IConfigService, Inject, Injector, merge, Plugin, UniverInstanceType, ICommandService } from '@univerjs/core';
 import { IRenderingEngine, IRenderManagerService } from '@univerjs/engine-render';
 import { defaultPluginConfig, SLIDES_PLUGIN_CONFIG_KEY } from './controllers/config.schema';
-// import { DocSelectionManagerService } from '@univerjs/docs';
-// import { CanvasView } from './views/render';
+import { AddSlideElementMutation } from './commands/mutations/add-slide-element.mutation';
+import { InsertShapeOperation } from './commands/operations/insert-shape.operation';
 
 export interface IUniverSlidesConfig {}
 
@@ -59,9 +59,23 @@ export class UniverSlidesPlugin extends Plugin {
         this.initCanvasEngine();
     }
 
+    override onStarting(): void {
+        this._registerCommands();
+    }
+
+    private _registerCommands(): void {
+        const commandService = this._injector.get(ICommandService);
+        [
+            AddSlideElementMutation,
+            InsertShapeOperation,
+        ].forEach((command) => commandService.registerCommand(command));
+    }
+
     override onReady(): void {
 
     }
+
+
 
     getConfig() {
         return this._config;

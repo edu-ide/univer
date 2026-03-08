@@ -24,7 +24,8 @@
         ".": "./src/index.ts",
         "./*": "./src/*",
         "./locale/*": "./src/locale/*.ts",
-        "./facade": "./src/facade/index.ts"
+        "./facade": "./src/facade/index.ts",
+        "./lib/*": "./lib/*"
     },
     "main": "./src/index.ts",
     "types": "./lib/types/index.d.ts",

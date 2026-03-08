@@ -19,10 +19,11 @@ import { GraphIcon, TextIcon } from '@univerjs/icons';
 import { BuiltInUIPart, ComponentManager, connectInjector, IMenuManagerService, IShortcutService, IUIPartsService } from '@univerjs/ui';
 import { ActivateSlidePageOperation } from '../commands/operations/activate.operation';
 import { AppendSlideOperation } from '../commands/operations/append-slide.operation';
-import { DeleteSlideElementOperation } from '../commands/operations/delete-element.operation';
+import { DeleteSlideElementCommand, DeleteSlideElementOperation } from '../commands/operations/delete-element.operation';
 import { InsertSlideFloatImageCommand } from '../commands/operations/insert-image.operation';
 import { InsertSlideShapeEllipseCommand, InsertSlideShapeEllipseOperation, InsertSlideShapeRectangleCommand, InsertSlideShapeRectangleOperation, ToggleSlideEditSidebarOperation } from '../commands/operations/insert-shape.operation';
 import { SlideAddTextCommand, SlideAddTextOperation } from '../commands/operations/insert-text.operation';
+import { AddSlideElementMutation, RemoveSlideElementMutation } from '../commands/mutations/element.mutation';
 import { SetSlidePageThumbOperation } from '../commands/operations/set-thumb.operation';
 import { SetTextEditArrowOperation } from '../commands/operations/text-edit.operation';
 import { UpdateSlideElementOperation } from '../commands/operations/update-element.operation';
@@ -81,7 +82,12 @@ export class SlidesUIController extends Disposable {
             InsertSlideShapeRectangleCommand,
             ToggleSlideEditSidebarOperation,
             DeleteSlideElementOperation,
+            DeleteSlideElementCommand,
             UpdateSlideElementOperation,
+
+            // Mutations for undo/redo
+            AddSlideElementMutation,
+            RemoveSlideElementMutation,
 
             // commands for editor
             SetTextEditArrowOperation,

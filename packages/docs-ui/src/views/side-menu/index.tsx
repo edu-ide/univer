@@ -123,7 +123,7 @@ function DocSideMenuContent() {
             p.paragraphStyle!.namedStyleType !== NamedStyleType.SUBTITLE &&
             p.paragraphStyle.namedStyleType !== NamedStyleType.NORMAL_TEXT
         )
-        .map((p) => {
+        .map((p, idx) => {
             const level = transformNamedStyleTypeToLevel(p.paragraphStyle!.namedStyleType!);
             minLevel = Math.min(minLevel, level);
             const bound = paragraphBounds?.get(p.startIndex);
@@ -131,13 +131,13 @@ function DocSideMenuContent() {
             const { paragraphStart, paragraphEnd } = bound;
 
             return {
-                id: p.paragraphStyle!.headingId!,
+                id: p.paragraphStyle?.headingId || `heading_${p.startIndex}_${idx}`,
                 text: getPlainText(fullDataStream.slice(paragraphStart, paragraphEnd)),
                 level,
                 isTitle: p.paragraphStyle?.namedStyleType === NamedStyleType.TITLE,
             };
         })
-        .filter((item) => item?.text) as ISideMenuItem[];
+        .filter((item) => item?.text && item?.id) as ISideMenuItem[];
 
     const handleScroll = useEvent((params) => {
         const scrollTop = params.viewportScrollY;
@@ -148,19 +148,7 @@ function DocSideMenuContent() {
         }
     });
 
-    const menus = paragraphMenus?.find((p) => p.isTitle)
-        ? paragraphMenus
-        : [
-            ...(title
-                ? [{
-                    id: TITLE_ID,
-                    text: title,
-                    level: 1,
-                    isTitle: true,
-                }]
-                : []),
-            ...(paragraphMenus ?? []),
-        ].filter(Boolean) as ISideMenuItem[];
+    const menus = paragraphMenus ?? [];
 
     const [open, setOpen] = useState(true);
 

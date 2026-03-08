@@ -286,6 +286,7 @@ export class RichText extends BaseObject {
     }
 
     protected _draw(ctx: UniverRenderingContext) {
+        console.log(`🎨 [RichText._draw] id=${this.oKey} size=${this.width}x${this.height} text="${this.text.substring(0, 20)}"`);
         this._documents.render(ctx);
     }
 

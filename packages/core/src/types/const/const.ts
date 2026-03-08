@@ -180,14 +180,14 @@ export const DEFAULT_SLIDE = {
 export const SHEET_EDITOR_UNITS = [DOCS_NORMAL_EDITOR_UNIT_ID_KEY, DOCS_ZEN_EDITOR_UNIT_ID_KEY, DOCS_FORMULA_BAR_EDITOR_UNIT_ID_KEY];
 
 export const NAMED_STYLE_MAP: Record<NamedStyleType, Nullable<ITextStyle>> = {
-    [NamedStyleType.HEADING_1]: { fs: 20, bl: 1 }, // Heading 1: 20pt, bold
-    [NamedStyleType.HEADING_2]: { fs: 18, bl: 1 }, // Heading 2: 18pt, bold
-    [NamedStyleType.HEADING_3]: { fs: 16, bl: 1 }, // Heading 3: 16pt, bold
-    [NamedStyleType.HEADING_4]: { fs: 14, bl: 1 }, // Heading 4: 14pt, bold
-    [NamedStyleType.HEADING_5]: { fs: 12, bl: 1 }, // Heading 5: 12pt, bold
+    [NamedStyleType.HEADING_1]: { fs: 32, bl: 1 }, // GitHub: 2em
+    [NamedStyleType.HEADING_2]: { fs: 24, bl: 1 }, // GitHub: 1.5em
+    [NamedStyleType.HEADING_3]: { fs: 20, bl: 1 }, // GitHub: 1.25em
+    [NamedStyleType.HEADING_4]: { fs: 16, bl: 1 }, // GitHub: 1em
+    [NamedStyleType.HEADING_5]: { fs: 14, bl: 1 }, // GitHub: .875em
     [NamedStyleType.NORMAL_TEXT]: null, // Normal text: using global font size
-    [NamedStyleType.TITLE]: { fs: 26, bl: 1 }, // Title: 26pt, bold
-    [NamedStyleType.SUBTITLE]: { fs: 15, cl: { rgb: '#999999' } }, // Subtitle: 15pt
+    [NamedStyleType.TITLE]: { fs: 36, bl: 1 }, // Title: 36pt, bold
+    [NamedStyleType.SUBTITLE]: { fs: 18, cl: { rgb: '#656d76' } }, // Subtitle: GitHub muted
     [NamedStyleType.NAMED_STYLE_TYPE_UNSPECIFIED]: null,
 };
 
@@ -195,68 +195,36 @@ const BOTTOM_P = 4;
 
 export const NAMED_STYLE_SPACE_MAP: Record<NamedStyleType, Nullable<IParagraphStyle>> = {
     [NamedStyleType.HEADING_1]: {
-        spaceAbove: {
-            v: 20,
-        },
-        spaceBelow: {
-            v: 6 + BOTTOM_P,
-        },
+        spaceAbove: { v: 24 }, // GitHub: mt 24px
+        spaceBelow: { v: 16 }, // GitHub: mb 16px
     },
     [NamedStyleType.HEADING_2]: {
-        spaceAbove: {
-            v: 18,
-        },
-        spaceBelow: {
-            v: 6 + BOTTOM_P,
-        },
+        spaceAbove: { v: 24 },
+        spaceBelow: { v: 16 },
     },
     [NamedStyleType.HEADING_3]: {
-        spaceAbove: {
-            v: 16,
-        },
-        spaceBelow: {
-            v: 6 + BOTTOM_P,
-        },
+        spaceAbove: { v: 24 },
+        spaceBelow: { v: 16 },
     },
     [NamedStyleType.HEADING_4]: {
-        spaceAbove: {
-            v: 14,
-        },
-        spaceBelow: {
-            v: 4 + BOTTOM_P,
-        },
+        spaceAbove: { v: 24 },
+        spaceBelow: { v: 16 },
     },
     [NamedStyleType.HEADING_5]: {
-        spaceAbove: {
-            v: 12,
-        },
-        spaceBelow: {
-            v: 4 + BOTTOM_P,
-        },
+        spaceAbove: { v: 24 },
+        spaceBelow: { v: 16 },
     },
     [NamedStyleType.NORMAL_TEXT]: {
-        spaceAbove: {
-            v: 0,
-        },
-        spaceBelow: {
-            v: 0,
-        },
+        spaceAbove: { v: 0 },
+        spaceBelow: { v: 0 },
     },
     [NamedStyleType.TITLE]: {
-        spaceAbove: {
-            v: 0,
-        },
-        spaceBelow: {
-            v: 3 + BOTTOM_P,
-        },
+        spaceAbove: { v: 0 },
+        spaceBelow: { v: 12 },
     },
     [NamedStyleType.SUBTITLE]: {
-        spaceAbove: {
-            v: 0,
-        },
-        spaceBelow: {
-            v: 16,
-        },
+        spaceAbove: { v: 0 },
+        spaceBelow: { v: 20 },
     },
     [NamedStyleType.NAMED_STYLE_TYPE_UNSPECIFIED]: null,
 };

@@ -60,6 +60,10 @@ export interface ISelectionStyle {
      */
     id?: string;
     /**
+     * The title of the selection, usually used to display the user's name in collaborative scenarios.
+     */
+    title?: string;
+    /**
      * The volume of the selection border determines the thickness of the selection border
      */
     strokeWidth: number;

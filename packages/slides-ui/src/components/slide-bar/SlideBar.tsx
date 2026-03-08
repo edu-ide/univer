@@ -49,9 +49,12 @@ export function SlideSideBar() {
         return null;
     }
 
-    const slideList = pageOrder.map((id) => pages[id]);
+    const slideList = pageOrder.map((id) => pages[id]).filter(Boolean);
 
     const [activatePageId, setActivatePageId] = useState<string | null>(currentSlide?.getActivePage()?.id ?? null);
+
+    // 🦜 Force re-render on remote sync updates
+    const [, setSyncVersion] = useState(0);
 
     const divRefs = useMemo(() => slideList.map(() => createRef<HTMLDivElement>()), [slideList]);
 
@@ -65,6 +68,13 @@ export function SlideSideBar() {
         return () => {
             subscriber?.unsubscribe();
         };
+    }, []);
+
+    // 🦜 Listen for remote sync updates to refresh sidebar
+    useEffect(() => {
+        const handler = () => setSyncVersion((v) => v + 1);
+        window.addEventListener('univer-slide-sync-update', handler);
+        return () => window.removeEventListener('univer-slide-sync-update', handler);
     }, []);
 
     useEffect(() => {

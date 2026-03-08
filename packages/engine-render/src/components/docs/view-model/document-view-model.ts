@@ -302,7 +302,10 @@ export class DocumentViewModel implements IDisposable {
     reset(documentDataModel: DocumentDataModel) {
         this._documentDataModel = documentDataModel;
 
-        const body = documentDataModel.getBody()!;
+        const body = documentDataModel.getBody();
+        if (!body) {
+            return;
+        }
 
         const { sectionList, tableNodeCache } = parseDataStreamToTree(body.dataStream, body.tables);
 
@@ -464,6 +467,7 @@ export class DocumentViewModel implements IDisposable {
     private _buildTextRunsCache() {
         const textRuns = this.getBody()?.textRuns ?? [];
         this._textRunsCache.clear();
+
 
         for (const textRun of textRuns) {
             const { st, ed } = textRun;

@@ -19,7 +19,7 @@ import type { IRenderContext, IRenderModule, SpreadsheetSkeleton } from '@univer
 import type { ISheetCommandSharedParams } from '@univerjs/sheets';
 import type { FilterModel } from '@univerjs/sheets-filter';
 import type { ISheetsFilterButtonShapeProps } from '../widgets/filter-button.shape';
-import { CommandType, fromCallback, ICommandService, Inject, Injector, InterceptorEffectEnum, RxDisposable, ThemeService, VerticalAlign } from '@univerjs/core';
+import { CommandType, fromCallback, ICommandService, Inject, Injector, InterceptorEffectEnum, RxDisposable, ThemeService, VerticalAlign, LocaleService } from '@univerjs/core';
 import { INTERCEPTOR_POINT, SetRangeValuesMutation, SheetInterceptorService } from '@univerjs/sheets';
 import { FILTER_MUTATIONS, SheetsFilterService } from '@univerjs/sheets-filter';
 
@@ -72,7 +72,8 @@ export class SheetsFilterRenderController extends RxDisposable implements IRende
         @Inject(ThemeService) private readonly _themeService: ThemeService,
         @Inject(SheetInterceptorService) private readonly _sheetInterceptorService: SheetInterceptorService,
         @ICommandService private readonly _commandService: ICommandService,
-        @ISheetSelectionRenderService private readonly _selectionRenderService: ISheetSelectionRenderService
+        @ISheetSelectionRenderService private readonly _selectionRenderService: ISheetSelectionRenderService,
+        @Inject(LocaleService) private readonly _localeService: LocaleService
     ) {
         super();
 
@@ -131,6 +132,7 @@ export class SheetsFilterRenderController extends RxDisposable implements IRende
             scene,
             DEFAULT_Z_INDEX,
             this._themeService,
+            this._localeService,
             {
                 rowHeaderWidth,
                 columnHeaderHeight,

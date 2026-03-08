@@ -72,13 +72,20 @@ export class UniverSheetsPlugin extends Plugin {
             defaultPluginConfig,
             this._config
         );
-        this._configService.setConfig(SHEETS_PLUGIN_CONFIG_KEY, rest);
+        
+        if (this._configService) {
+            this._configService.setConfig(SHEETS_PLUGIN_CONFIG_KEY, rest);
+            this._initConfig();
+        } else {
+            console.warn('[UniverSheetsPlugin] ConfigService not injected, skipping config setup.');
+        }
 
-        this._initConfig();
         this._initDependencies();
     }
 
     private _initConfig(): void {
+        if (!this._configService) return;
+
         if (this._config?.onlyRegisterFormulaRelatedMutations) {
             this._configService.setConfig(ONLY_REGISTER_FORMULA_RELATED_MUTATIONS_KEY, true);
         }
@@ -152,6 +159,10 @@ export class UniverSheetsPlugin extends Plugin {
     }
 
     override onStarting(): void {
+        if (!this._injector) {
+             console.error('[UniverSheetsPlugin] Injector not injected! Dependency registration skipped.');
+             return;
+        }
         touchDependencies(this._injector, [
             [BasicWorksheetController],
             [MergeCellController],

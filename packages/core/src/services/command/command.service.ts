@@ -586,7 +586,7 @@ export class CommandService extends Disposable implements ICommandService {
     }
 
     private _syncExecute<P extends object, R = boolean>(command: ICommand<P, R>, params?: P, options?: IExecutionOptions): R {
-         // If syncOnly is true, skip execution but return true to indicate success for sync purposes
+        // If syncOnly is true, skip execution but return true to indicate success for sync purposes
         if (options?.syncOnly) {
             return true as R;
         }

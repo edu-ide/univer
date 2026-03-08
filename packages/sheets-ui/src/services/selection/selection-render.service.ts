@@ -19,7 +19,7 @@ import type { IMouseEvent, IPointerEvent, IRenderContext, IRenderModule, Viewpor
 import type { ISelectionWithCoord, ISelectionWithStyle, ISetSelectionsOperationParams, WorkbookSelectionModel } from '@univerjs/sheets';
 import type { ISheetObjectParam } from '../../controllers/utils/component-tools';
 import type { SelectionControl } from './selection-control';
-import { ICommandService, IContextService, ILogService, Inject, Injector, RANGE_TYPE, Rectangle, set, ThemeService, toDisposable } from '@univerjs/core';
+import { ICommandService, IContextService, ILogService, Inject, Injector, RANGE_TYPE, Rectangle, set, ThemeService, toDisposable, LocaleService } from '@univerjs/core';
 import { ScrollTimerType, SHEET_VIEWPORT_KEY, Vector2 } from '@univerjs/engine-render';
 import { convertSelectionDataToRange, REF_SELECTIONS_ENABLED, SelectionMoveType, SELECTIONS_ENABLED, SetSelectionsOperation, SheetsSelectionsService } from '@univerjs/sheets';
 import { IShortcutService } from '@univerjs/ui';
@@ -50,14 +50,16 @@ export class SheetSelectionRenderService extends BaseSelectionRenderService impl
         @Inject(SheetSkeletonManagerService) sheetSkeletonManagerService: SheetSkeletonManagerService,
         @ILogService private readonly _logService: ILogService,
         @ICommandService private readonly _commandService: ICommandService,
-        @IContextService protected readonly _contextService: IContextService
+        @IContextService protected readonly _contextService: IContextService,
+        @Inject(LocaleService) protected override readonly _localeService: LocaleService
     ) {
         super(
             injector,
             themeService,
             shortcutService,
             sheetSkeletonManagerService,
-            _contextService
+            _contextService,
+            _localeService
         );
 
         this._workbookSelections = selectionManagerService.getWorkbookSelections(this._context.unitId);

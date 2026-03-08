@@ -48,10 +48,19 @@ export class UniverRenderEnginePlugin extends Plugin {
             defaultPluginConfig,
             this._config
         );
-        this._configService.setConfig(ENGINE_RENDER_PLUGIN_CONFIG_KEY, rest);
+        
+        if (this._configService) {
+            this._configService.setConfig(ENGINE_RENDER_PLUGIN_CONFIG_KEY, rest);
+        } else {
+             console.warn('[UniverRenderEnginePlugin] ConfigService not injected, skipping config setup.');
+        }
     }
 
     override onStarting(): void {
+        if (!this._injector) {
+             console.error('[UniverRenderEnginePlugin] Injector not injected! Dependency registration skipped.');
+             return;
+        }
         registerDependencies(this._injector, [
             [UniverRenderConfigService],
             [ICanvasColorService, { useClass: CanvasColorService }],

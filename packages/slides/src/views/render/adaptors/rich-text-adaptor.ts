@@ -76,12 +76,18 @@ export class RichTextAdaptor extends ObjectAdaptor {
         if (text != null) {
             config = { ...config, text, ff, fs, it, bl, ul, st, ol, bg, bd, cl };
             isNotNull = true;
+            console.log(`📝 [RichText] ${id}: plain text="${(text as string).substring(0, 30)}" fs=${fs}`);
         } else if (rich != null) {
             config = { ...config, richText: rich };
             isNotNull = true;
+            const r = rich as any;
+            const ds = r?.body?.dataStream || '';
+            const runs = r?.body?.textRuns || [];
+            console.log(`📝 [RichText] ${id}: rich doc, text="${ds.substring(0, 40)}", runs=${runs.length}, firstFs=${runs[0]?.ts?.fs}`);
         }
 
         if (isNotNull === false) {
+            console.warn(`⚠️ [RichText] ${id}: no text or rich data, skipping`);
             return;
         }
         return new RichText(this._localeService, id, config);

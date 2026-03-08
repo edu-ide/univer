@@ -69,11 +69,13 @@ export class Image extends Shape<IImageProps> {
             this._native.src = config.url;
             this._native.crossOrigin = 'anonymous';
             this._native.onload = () => {
+                console.log(`✅ [Image] LOADED: id=${id} naturalSize=${this._native!.naturalWidth}x${this._native!.naturalHeight}`);
                 config.success?.();
                 this.makeDirty(true);
                 (this.getEngine()?.activeScene as Scene)?.onFileLoaded$.emitEvent(id);
             };
-            this._native.onerror = () => {
+            this._native.onerror = (e) => {
+                console.error(`❌ [Image] LOAD ERROR: id=${id} url=${config.url?.substring(0, 60)}... error=`, e);
                 if (config.fail) {
                     config.fail();
                 } else {
@@ -280,6 +282,7 @@ export class Image extends Shape<IImageProps> {
                 this.height + this.strokeWidth + this.top < top ||
                 bottom < this.top
             ) {
+                console.warn(`⚠️ [Image.render] CULLED by viewBound: id=${this.oKey} pos=${this.left},${this.top} size=${this.width}x${this.height} viewBound=[${left},${top},${right},${bottom}]`);
                 return this;
             }
         }
@@ -308,8 +311,11 @@ export class Image extends Shape<IImageProps> {
 
     protected override _draw(ctx: UniverRenderingContext) {
         if (this._native == null) {
+            console.warn(`⚠️ [Image._draw] NO native image for id=${this.oKey}`);
             return;
         }
+        const loaded = this._native.complete && this._native.naturalWidth > 0;
+        console.log(`🎨 [Image._draw] id=${this.oKey} size=${this.width}x${this.height} loaded=${loaded} nativeSize=${this._native.naturalWidth}x${this._native.naturalHeight}`);
         if (!this._renderByCropper && this.srcRect) {
             const { left = 0, top = 0, right = 0, bottom = 0 } = this.srcRect;
             ctx.beginPath();

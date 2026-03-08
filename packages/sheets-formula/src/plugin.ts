@@ -60,10 +60,15 @@ export class UniverRemoteSheetsFormulaPlugin extends Plugin {
             defaultPluginRemoteConfig,
             this._config
         );
-        this._configService.setConfig(PLUGIN_CONFIG_KEY_REMOTE, rest);
+        if (this._configService) {
+            this._configService.setConfig(PLUGIN_CONFIG_KEY_REMOTE, rest);
+        } else {
+             console.warn('[UniverRemoteSheetsFormulaPlugin] ConfigService not injected, skipping config setup.');
+        }
     }
 
     override onStarting(): void {
+        if (!this._injector) return;
         this._injector.add([RemoteRegisterFunctionService]);
         this._injector.get(IRPCChannelService).registerChannel(
             RemoteRegisterFunctionServiceName,
@@ -90,11 +95,19 @@ export class UniverSheetsFormulaPlugin extends Plugin {
             defaultPluginBaseConfig,
             this._config
         );
-        this._configService.setConfig(PLUGIN_CONFIG_KEY_BASE, rest, { merge: true });
+        if (this._configService) {
+            this._configService.setConfig(PLUGIN_CONFIG_KEY_BASE, rest, { merge: true });
+        } else {
+             console.warn('[UniverSheetsFormulaPlugin] ConfigService not injected, skipping config setup.');
+        }
     }
 
     override onStarting(): void {
         const j = this._injector;
+        if (!j) {
+             console.error('[UniverSheetsFormulaPlugin] Injector not injected!');
+             return;
+        }
         const dependencies: Dependency[] = [
             [IRegisterFunctionService, { useClass: RegisterFunctionService }],
             [IDescriptionService, { useClass: DescriptionService }],

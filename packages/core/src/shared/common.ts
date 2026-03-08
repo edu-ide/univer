@@ -147,6 +147,13 @@ export function isCellCoverable(cell: Nullable<ICellDataForSheetInterceptor>) {
 
 export function getColorStyle(color: Nullable<IColorStyle>): Nullable<string> {
     if (color) {
+        // Gradient fills → CSS linear-gradient
+        if (color.gradient) {
+            const { angle = 0, stops } = color.gradient;
+            const cssStops = stops.map((s) => `${s.color} ${s.position * 100}%`).join(', ');
+            return `linear-gradient(${angle}deg, ${cssStops})`;
+        }
+
         if (color.rgb) {
             return new ColorKit(color.rgb).toHexString();
         }

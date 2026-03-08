@@ -50,12 +50,24 @@ export interface ITextDecoration {
 }
 
 /**
- * RGB color or theme color
+ * Gradient fill definition for shapes and backgrounds
+ */
+export interface IGradientFill {
+    angle?: number;
+    stops: Array<{ position: number; color: string }>;
+}
+
+/**
+ * RGB color, theme color, image, or gradient
  */
 export interface IColorStyle {
     // rgb?: Nullable<IColor | string>;
     rgb?: Nullable<string>;
     th?: ThemeColorType;
+    /** data: URL or http URL for background images */
+    image?: string;
+    /** Gradient fill with angle and color stops */
+    gradient?: IGradientFill;
 }
 
 /**

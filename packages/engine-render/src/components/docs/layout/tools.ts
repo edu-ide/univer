@@ -988,13 +988,13 @@ export const DEFAULT_PAGE_SIZE = { width: Number.POSITIVE_INFINITY, height: Numb
 const DEFAULT_MODERN_DOCUMENT_STYLE: IDocumentStyle = {
     pageNumberStart: 1,
     pageSize: {
-        width: ptToPixel(595),
+        width: 595, // RESTORE TO STANDARD: 595pt (approx 793px)
         height: Number.POSITIVE_INFINITY,
     },
-    marginTop: ptToPixel(50),
-    marginBottom: ptToPixel(50),
-    marginRight: ptToPixel(50),
-    marginLeft: ptToPixel(50),
+    marginTop: 37.5,    // 50px
+    marginBottom: 37.5,
+    marginRight: 37.5,
+    marginLeft: 37.5,
     renderConfig: {
         vertexAngle: 0,
         centerAngle: 0,
@@ -1031,7 +1031,20 @@ export function prepareSectionBreakConfig(ctx: ILayoutContext, nodeIndex: number
     // In modern mode, there are no pages, no sections, no columns. There are no headers and footers, and margins are all defaults.
     if (documentFlavor === DocumentFlavor.MODERN) {
         sectionBreak = Object.assign({}, sectionBreak, DEFAULT_MODERN_SECTION_BREAK);
+
+        // 🩹 PATCH: Preserve original width and margins if present before overwriting with defaults
+        const originalWidth = documentStyle.pageSize?.width;
+        const { marginLeft, marginRight, marginTop, marginBottom } = documentStyle;
+
         documentStyle = Object.assign({}, documentStyle, DEFAULT_MODERN_DOCUMENT_STYLE);
+
+        if (originalWidth && originalWidth !== Number.POSITIVE_INFINITY) {
+            documentStyle.pageSize = { ...documentStyle.pageSize, width: originalWidth };
+        }
+        if (marginLeft !== undefined) documentStyle.marginLeft = marginLeft;
+        if (marginRight !== undefined) documentStyle.marginRight = marginRight;
+        if (marginTop !== undefined) documentStyle.marginTop = marginTop;
+        if (marginBottom !== undefined) documentStyle.marginBottom = marginBottom;
     }
 
     const {

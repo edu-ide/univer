@@ -30,7 +30,6 @@ import { DesktopContextMenu } from '../components/context-menu/ContextMenu';
 import { GlobalZone } from '../components/global-zone/GlobalZone';
 import { Sidebar } from '../components/sidebar/Sidebar';
 import { ZenZone } from '../components/zen-zone/ZenZone';
-import { OnlyOfficeTitleBar } from './OnlyOfficeTitleBar';
 
 export interface IUniverWorkbenchProps extends IWorkbenchOptions {
     mountContainer: HTMLElement;
@@ -135,7 +134,6 @@ export function DesktopWorkbenchContent(props: IUniverWorkbenchProps) {
               * all focusin event merged from its descendants. The DesktopLayoutService would listen to focusin events
               * bubbled to this element and refocus the input element.
               */}
-            <OnlyOfficeTitleBar />
             <div
                 data-u-comp="workbench-layout"
                 className={clsx(`

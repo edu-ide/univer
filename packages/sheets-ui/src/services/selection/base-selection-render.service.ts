@@ -40,6 +40,8 @@ import {
     InterceptorManager,
     RANGE_TYPE,
     ThemeService,
+    Inject,
+    LocaleService,
 } from '@univerjs/core';
 import { ScrollTimer, ScrollTimerType, SHEET_VIEWPORT_KEY, Vector2 } from '@univerjs/engine-render';
 import { convertPrimaryWithCoordToPrimary, REF_SELECTIONS_ENABLED, SELECTIONS_ENABLED } from '@univerjs/sheets';
@@ -203,8 +205,8 @@ export class BaseSelectionRenderService extends Disposable implements ISheetSele
         // WTF: why shortcutService is injected here?
         protected readonly _shortcutService: IShortcutService,
         protected readonly _sheetSkeletonManagerService: SheetSkeletonManagerService,
-        protected readonly contextService: IContextService
-
+        protected readonly contextService: IContextService,
+        @Inject(LocaleService) protected readonly _localeService: LocaleService
     ) {
         super();
         // this._resetSelectionStyle();
@@ -252,7 +254,7 @@ export class BaseSelectionRenderService extends Disposable implements ISheetSele
     newSelectionControl(scene: Scene, skeleton: SpreadsheetSkeleton, selection: ISelectionWithStyle): SelectionControl {
         const zIndex = this.getSelectionControls().length;
         const { rowHeaderWidth, columnHeaderHeight } = skeleton;
-        const control = new SelectionControl(scene, zIndex, this._selectionTheme, {
+        const control = new SelectionControl(scene, zIndex, this._selectionTheme, this._localeService, {
             highlightHeader: this._highlightHeader,
             rowHeaderWidth,
             columnHeaderHeight,

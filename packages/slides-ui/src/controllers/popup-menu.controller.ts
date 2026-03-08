@@ -19,7 +19,7 @@ import type { BaseObject, ObjectType, Scene } from '@univerjs/engine-render';
 import { FOCUSING_COMMON_DRAWINGS, ICommandService, IContextService, Inject, IUniverInstanceService, RxDisposable, toDisposable, UniverInstanceType } from '@univerjs/core';
 import { IRenderManagerService } from '@univerjs/engine-render';
 import { ISidebarService } from '@univerjs/ui';
-import { DeleteSlideElementOperation } from '../commands/operations/delete-element.operation';
+import { DeleteSlideElementCommand } from '../commands/operations/delete-element.operation';
 import { ToggleSlideEditSidebarOperation } from '../commands/operations/insert-shape.operation';
 import { UpdateSlideElementOperation } from '../commands/operations/update-element.operation';
 import { COMPONENT_SLIDE_IMAGE_POPUP_MENU } from '../components/image-popup-menu/component-name';
@@ -187,7 +187,7 @@ export class SlidePopupMenuController extends RxDisposable {
         }, {
             label: 'slide.popup.delete',
             index: 5,
-            commandId: DeleteSlideElementOperation.id,
+            commandId: DeleteSlideElementCommand.id,
             commandParams: {
                 id: oKey,
                 unitId,

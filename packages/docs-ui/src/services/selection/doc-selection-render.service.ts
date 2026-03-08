@@ -153,26 +153,51 @@ export class DocSelectionRenderService extends RxDisposable implements IRenderMo
         @Inject(DocSkeletonManagerService) private readonly _docSkeletonManagerService: DocSkeletonManagerService
     ) {
         super();
-        this._initDOM();
-        this._registerContainer();
-        this._setSystemHighlightColorToStyle();
-        this._listenCurrentUnitChange();
+        // console.warn('🔍 [DocSelectionRenderService] Constructor called for unit:', _context.unitId);
+        try {
+            this._initDOM();
+
+            if (this._layoutService) {
+                try {
+                    this._registerContainer();
+                } catch (e) {
+                    console.warn('⚠️ [DocSelectionRenderService] Container registration failed (non-fatal):', e);
+                }
+            } else {
+                console.warn('⚠️ [DocSelectionRenderService] ILayoutService not found, skipping container registration.');
+            }
+
+            this._setSystemHighlightColorToStyle();
+
+            if (this._univerInstanceService) {
+                this._listenCurrentUnitChange();
+            }
+        } catch (e) {
+            console.error('❌ [DocSelectionRenderService] Initialization CRASHED:', e);
+        }
     }
 
     private _listenCurrentUnitChange() {
-        this._univerInstanceService.getCurrentTypeOfUnit$<DocumentDataModel>(UniverInstanceType.UNIVER_DOC)
-            .pipe(takeUntil(this.dispose$))
-            .subscribe((documentModel) => {
-                if (documentModel == null) {
-                    return;
-                }
+        try {
+            this._univerInstanceService.getCurrentTypeOfUnit$<DocumentDataModel>(UniverInstanceType.UNIVER_DOC)
+                .pipe(takeUntil(this.dispose$))
+                .subscribe((documentModel) => {
+                    if (documentModel == null) {
+                        return;
+                    }
 
-                const unitId = documentModel.getUnitId();
-
-                if (unitId !== this._context.unitId && !this._reserveRanges) {
-                    this.removeAllRanges();
-                }
-            });
+                    try {
+                        const unitId = documentModel.getUnitId();
+                        if (unitId !== this._context.unitId && !this._reserveRanges) {
+                            this.removeAllRanges();
+                        }
+                    } catch (err) {
+                        console.error('❌ [DocSelectionRenderService] Error in unit change subscription:', err);
+                    }
+                });
+        } catch (e) {
+            console.error('❌ [DocSelectionRenderService] Failed to setup unit change listener:', e);
+        }
     }
 
     get activeViewPort() {
@@ -708,6 +733,15 @@ export class DocSelectionRenderService extends RxDisposable implements IRenderMo
 
     private _initDOM() {
         const { unitId } = this._context;
+        // console.warn('🔍 [DocSelectionRenderService] _initDOM called for unit:', unitId);
+
+        // 🛡️ Safe Cleanup: Remove existing duplicate container if present
+        const existing = document.getElementById(`univer-doc-selection-container-${unitId}`);
+        if (existing) {
+            console.warn(`[DocSelectionRenderService] Found stale container for ${unitId}, removing...`);
+            existing.remove();
+        }
+
         const container = document.createElement('div');
         container.style.position = 'fixed';
         container.style.left = '0px';

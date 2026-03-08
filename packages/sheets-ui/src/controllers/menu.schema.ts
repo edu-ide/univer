@@ -49,7 +49,7 @@ import {
     SetWorksheetRowIsAutoHeightCommand,
     ToggleGridlinesCommand,
 } from '@univerjs/sheets';
-import { ContextMenuGroup, ContextMenuPosition, RibbonDataGroup, RibbonPosition, RibbonStartGroup } from '@univerjs/ui';
+import { ContextMenuGroup, ContextMenuPosition, RibbonDataGroup, RibbonPageLayoutGroup, RibbonPosition, RibbonReviewGroup, RibbonStartGroup, RibbonViewGroup } from '@univerjs/ui';
 import {
     SheetCopyCommand,
     SheetCutCommand,
@@ -296,11 +296,21 @@ export const menuSchema: MenuSchemaType = {
             },
         },
     },
+    // DATA TAB
     [RibbonPosition.DATA]: {
         [RibbonDataGroup.OTHERS]: {
             [TEXT_TO_NUMBER_TOOLBAR_MENU_ID]: {
                 order: 0,
                 menuItemFactory: Text2NumberToolbarMenuItemFactory,
+            },
+        },
+    },
+    // VIEW TAB
+    [RibbonPosition.VIEW]: {
+        [RibbonViewGroup.VISIBILITY]: {
+            [ToggleGridlinesCommand.id]: {
+                order: 1,
+                menuItemFactory: ToggleGridlinesMenuFactory,
             },
         },
     },

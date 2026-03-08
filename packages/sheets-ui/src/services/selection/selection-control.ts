@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-import type { ICellWithCoord, IRangeWithCoord, Nullable, ThemeService } from '@univerjs/core';
+import type { ICellWithCoord, IRangeWithCoord, LocaleService, Nullable, ThemeService, IColorStyle } from '@univerjs/core';
 import type { IObjectFullState, IRectProps, Scene, SpreadsheetSkeleton } from '@univerjs/engine-render';
 import type { ISelectionStyle, ISelectionWidgetConfig, ISelectionWithCoord } from '@univerjs/sheets';
 import type { ISelectionShapeExtensionOption } from './selection-shape-extension';
 import { ColorKit, Disposable, RANGE_TYPE, toDisposable } from '@univerjs/core';
-import { cancelRequestFrame, DashedRect, FIX_ONE_PIXEL_BLUR_OFFSET, Group, Rect, requestNewFrame, TRANSFORM_CHANGE_OBSERVABLE_TYPE } from '@univerjs/engine-render';
+import { cancelRequestFrame, DashedRect, FIX_ONE_PIXEL_BLUR_OFFSET, Group, Rect, requestNewFrame, RichText, TRANSFORM_CHANGE_OBSERVABLE_TYPE } from '@univerjs/engine-render';
 import {
     SELECTION_CONTROL_BORDER_BUFFER_COLOR,
     SELECTION_CONTROL_BORDER_BUFFER_WIDTH,
@@ -114,6 +114,9 @@ export class SelectionControl extends Disposable {
     private _columnHeaderBorder!: Rect;
     private _columnHeaderGroup!: Group;
     private _dashedRect!: Rect;
+    private _labelRect!: Rect;
+    private _labelText!: RichText;
+    private _labelGroup!: Group;
 
     // for ref selection
     private _topLeftWidget!: Rect;
@@ -155,6 +158,7 @@ export class SelectionControl extends Disposable {
         protected _scene: Scene,
         protected _zIndex: number,
         protected readonly _themeService: ThemeService,
+        protected readonly _localeService: LocaleService,
         options?: {
             highlightHeader?: boolean;
             enableAutoFill?: boolean;
@@ -228,6 +232,25 @@ export class SelectionControl extends Disposable {
             stroke: '#fff',
         });
 
+        // Initialize Label Group
+        this._labelRect = new Rect('__SelectionLabelRect__' + zIndex, {
+            zIndex: zIndex + 3,
+            radius: 4,
+        });
+        this._labelText = new RichText(this._localeService, '__SelectionLabelText__' + zIndex, {
+            zIndex: zIndex + 4,
+            text: '',
+            fs: 12,
+            cl: {
+                rgb: '#fff',
+            },
+
+        });
+        this._labelGroup = new Group('__SelectionLabelGroup__' + zIndex, this._labelRect, this._labelText);
+        this._labelGroup.hide();
+        this._labelGroup.evented = false;
+        this._labelGroup.zIndex = zIndex + 3;
+
         const shapes = [
             this._autoFillControl,
             this._leftBorder,
@@ -239,6 +262,7 @@ export class SelectionControl extends Disposable {
             this._backgroundControlMiddleRight,
             this._backgroundControlBottom,
             this._dashedRect,
+            this._labelGroup,
         ];
 
         this._widgetRects = this._initialWidget();
@@ -630,6 +654,72 @@ export class SelectionControl extends Disposable {
 
             this.dashedRect.show();
         }
+
+        // --- Render User Label ---
+        const title = currentStyle.title?.replace(/[\r\n]+/g, ' ').trim();
+        if (title) {
+            this._labelGroup.show();
+
+            const fontSize = 14;
+            const paddingX = 8;
+            const paddingY = 4;
+            const charWidth = fontSize * 0.6;
+            const textWidth = title.length * charWidth + paddingX * 2;
+            const textHeight = fontSize + paddingY * 2;
+
+            // Move label to the OUTSIDE (North) of the selection
+            // -textHeight (label height) - 2 (small gap)
+            const labelX = 0;
+            const labelY = -textHeight - 2;
+
+            console.log('[SelectionControl] Rendering label (NORTH-OUTSIDE) at:', { labelX, labelY, textWidth, textHeight, zIndex: this.zIndex });
+
+            this._labelRect.transformByState({
+                left: 0,
+                top: 0,
+                width: textWidth,
+                height: textHeight,
+            });
+            this._labelRect.setProps({
+                fill: stroke,
+                zIndex: 1000,
+            });
+
+            // FIX: Recreate RichText because setProps does not update text content in this version
+            if (this._labelText) {
+                // Remove from group
+                this._labelGroup.removeObject(this._labelText);
+                this._labelText.dispose();
+            }
+
+            this._labelText = new RichText(this._localeService, '__SelectionLabelText__' + this.zIndex + '_' + Date.now(), {
+                zIndex: 1001,
+                text: title,
+                fs: fontSize,
+                cl: {
+                    rgb: '#ffffff',
+                },
+            });
+
+            this._labelText.transformByState({
+                left: paddingX,
+                top: paddingY,
+                width: textWidth - paddingX * 2,
+                height: fontSize,
+            });
+
+            this._labelGroup.addObject(this._labelText);
+
+            this._labelGroup.transformByState({
+                left: labelX,
+                top: labelY,
+            });
+            this._labelGroup.zIndex = 10000;
+            this._labelGroup.show();
+        } else {
+            this._labelGroup.hide();
+        }
+
         this._showAutoFill = this._showAutoFill && this._enableAutoFill;
         if (this._showAutoFill && !this._hasWidgets(widgets)) {
             const fillProps: IRectProps = {
@@ -774,6 +864,9 @@ export class SelectionControl extends Disposable {
         this._backgroundControlBottom?.dispose();
         this._autoFillControl.dispose();
         this._selectionShapeGroup?.dispose();
+        this._labelGroup?.dispose();
+        this._labelRect?.dispose();
+        this._labelText?.dispose();
 
         this._rowHeaderBackground?.dispose();
         this._rowHeaderBorder?.dispose();
