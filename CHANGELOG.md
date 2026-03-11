@@ -1,5 +1,23 @@
 # Changelog
 
+# [0.17.0](https://github.com/dream-num/univer/compare/v0.16.1...v0.17.0) (2026-03-11)
+
+
+### Bug Fixes
+
+* change font size props value to number; increase font ([#6649](https://github.com/dream-num/univer/issues/6649)) ([66974b0](https://github.com/dream-num/univer/commit/66974b0f57148b3cf38fab75e8c82f2951673334))
+* **design:** vertically center Tree node title ([#6661](https://github.com/dream-num/univer/issues/6661)) ([1f504d6](https://github.com/dream-num/univer/commit/1f504d6f1d12ed45d59a5158887c07812107668a))
+* **drawing:** fix drawing group error ([#6635](https://github.com/dream-num/univer/issues/6635)) ([7393097](https://github.com/dream-num/univer/commit/73930971a53542245740f858af7b8c3ee849fd30))
+* **formula:** fix =((10-9)%)% ([#6630](https://github.com/dream-num/univer/issues/6630)) ([c15b3c3](https://github.com/dream-num/univer/commit/c15b3c3dc778af8a94d374e7d843a701271424e8))
+* **formula:** fix formula calculation errors caused by setting the worksheet rows and columns count ([#6668](https://github.com/dream-num/univer/issues/6668)) ([1f4b5ae](https://github.com/dream-num/univer/commit/1f4b5aeb774c3680955849b47a6f567c742071d6))
+* **formula:** fix where formulas like COUNTIFS would cause memory overflow when the range and condition values ​​were very large ([#6647](https://github.com/dream-num/univer/issues/6647)) ([9ca7e2e](https://github.com/dream-num/univer/commit/9ca7e2e92986de2ffffeca36abca2b5428adb6e5))
+* **render:** fix scrollbar calculation issue that caused an extra blank area on the far right ([#6659](https://github.com/dream-num/univer/issues/6659)) ([281804d](https://github.com/dream-num/univer/commit/281804d36b4024b589272d61d6f9de55f687bc66))
+
+
+### Features
+
+* **core:** add version and package name validation for plugins ([#6653](https://github.com/dream-num/univer/issues/6653)) ([a1b83e5](https://github.com/dream-num/univer/commit/a1b83e5da4e8612426f8e21beb9bdb5346a70731))
+
 ## [0.16.1](https://github.com/dream-num/univer/compare/v0.16.0...v0.16.1) (2026-03-03)
 
 # [0.16.0](https://github.com/dream-num/univer/compare/v0.15.5...v0.16.0) (2026-02-28)

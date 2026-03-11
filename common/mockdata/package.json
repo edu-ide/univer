@@ -1,6 +1,6 @@
 {
     "name": "@univerjs/mockdata",
-    "version": "0.16.1",
+    "version": "0.17.0",
     "private": true,
     "description": "",
     "author": "DreamNum <developer@univer.ai>",
@@ -73,7 +73,7 @@
     },
     "devDependencies": {
         "@univerjs-infra/shared": "workspace:*",
-        "fs-extra": "^11.3.3",
+        "fs-extra": "^11.3.4",
         "typescript": "^5.9.3"
     }
 }

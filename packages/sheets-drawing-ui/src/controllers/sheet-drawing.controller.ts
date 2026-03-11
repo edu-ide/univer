@@ -19,6 +19,7 @@ import { IDrawingManagerService } from '@univerjs/drawing';
 import { SheetsSelectionsService } from '@univerjs/sheets';
 import { ComponentManager, IMenuManagerService, IShortcutService } from '@univerjs/ui';
 import { DeleteDrawingsCommand } from '../commands/commands/delete-drawings.command';
+import { FlipSheetDrawingCommand } from '../commands/commands/flip-drawings.command';
 import { GroupSheetDrawingCommand } from '../commands/commands/group-sheet-drawing.command';
 import { InsertCellImageCommand, InsertFloatImageCommand } from '../commands/commands/insert-image.command';
 import { InsertSheetDrawingCommand } from '../commands/commands/insert-sheet-drawing.command';
@@ -31,12 +32,11 @@ import { UngroupSheetDrawingCommand } from '../commands/commands/ungroup-sheet-d
 import { ClearSheetDrawingTransformerOperation } from '../commands/operations/clear-drawing-transformer.operation';
 import { EditSheetDrawingOperation } from '../commands/operations/edit-sheet-drawing.operation';
 import { SidebarSheetDrawingOperation } from '../commands/operations/open-drawing-panel.operation';
+import { menuSchema } from '../menu/schema';
 import { BATCH_SAVE_IMAGES_DIALOG_ID, BatchSaveImagesDialog } from '../views/batch-save-images';
 import { COMPONENT_SHEET_DRAWING_PANEL } from '../views/sheet-image-panel/component-name';
 import { SheetDrawingPanel } from '../views/sheet-image-panel/SheetDrawingPanel';
-import { menuSchema } from './menu.schema';
 import { DeleteDrawingsShortcutItem, MoveDrawingDownShortcutItem, MoveDrawingLeftShortcutItem, MoveDrawingRightShortcutItem, MoveDrawingUpShortcutItem } from './shortcuts/drawing.shortcut';
-import { FlipSheetDrawingCommand } from '../commands/commands/flip-drawings.command';
 
 export class SheetDrawingUIController extends Disposable {
     constructor(

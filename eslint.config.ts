@@ -17,11 +17,13 @@ export default antfu(
         ignores: [
             'mockdata/**/*.json',
             'pnpm-lock.yaml',
+            'examples/src/demos.ts',
         ],
         stylistic: {
             indent: 4,
             semi: true,
         },
+        e18e: false,
         regexp: false,
         react: true,
         pnpm: false,
@@ -41,7 +43,11 @@ export default antfu(
     headerPreset(),
     penetratingPreset(),
     typescriptPreset(),
-    univerSourcePreset(),
+    univerSourcePreset({
+        noFacadeImportsOutsideFacade: {
+            ignore: ['packages/uniscript/src/services/script-execution.service.ts'],
+        },
+    }),
     facadePreset(),
     noBarrelImportPreset(),
     tailwindcssPreset(),
