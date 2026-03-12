@@ -45,8 +45,86 @@ export interface IReferenceSource {
     headers?: IHeaders;
     lists?: ILists;
     drawings?: IDrawings;
+    visualBlocks?: IVisualBlocks;
     drawingsOrder?: string[];
     headerFooterDrawingsOrder?: string[];
+}
+
+export interface IVisualBoxInsets {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+}
+
+export interface IVisualBoxBorder {
+    color: string;
+    widthPx: number;
+}
+
+export interface IVisualSyntheticParagraph {
+    text: string;
+    style?: Record<string, any>;
+}
+
+export interface IVisualNoticeParagraph {
+    text: string;
+    fontFamily: string;
+    fontSizePx: number;
+    bold: boolean;
+    italic: boolean;
+    color: string;
+    align: string;
+    lineHeight: number;
+    spaceBefore: number;
+    spaceAfter: number;
+    indentLeft: number;
+    indentRight: number;
+}
+
+export interface IVisualNoticeBoxBlock {
+    kind: 'notice_box_block';
+    blockId?: string;
+    outerWidth: number;
+    outerHeight: number;
+    padding: IVisualBoxInsets;
+    backgroundColor: string;
+    border: IVisualBoxBorder;
+    paragraphs: IVisualNoticeParagraph[];
+    sourceTarget?: string | null;
+}
+
+export interface IVisualFormBoxBlock {
+    kind: 'form_box_block';
+    blockId?: string;
+    outerWidth: number;
+    outerHeight: number;
+    padding: IVisualBoxInsets;
+    paragraphs: IVisualSyntheticParagraph[];
+    sourceTarget?: string | null;
+    pictureTargets?: Array<string | null>;
+}
+
+export interface IVisualTitleBoxBlock {
+    kind: 'title_box_block';
+    blockId?: string;
+    outerWidth: number;
+    outerHeight: number;
+    padding: IVisualBoxInsets;
+    backgroundColor: string;
+    border: IVisualBoxBorder;
+    text: string;
+    fontFamily: string;
+    fontSizePx: number;
+    color: string;
+    bold?: boolean;
+    align?: 'left' | 'center' | 'right';
+}
+
+export type IVisualDocBlock = IVisualNoticeBoxBlock | IVisualFormBoxBlock | IVisualTitleBoxBlock;
+
+export interface IVisualBlocks {
+    [blockId: string]: IVisualDocBlock;
 }
 
 export interface IDocumentSettings {
