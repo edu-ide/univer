@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import type { IParagraphStyle, Nullable } from '@univerjs/core';
+import type { IParagraphStyle, IVisualDocBlock, Nullable } from '@univerjs/core';
 import type { IDocumentSkeletonGlyph } from '../../../../../basics/i-document-skeleton-cached';
 import type { ISectionBreakConfig } from '../../../../../basics/interfaces';
 import type { DataStreamTreeNode } from '../../../view-model/data-stream-tree-node';
@@ -104,6 +104,18 @@ export interface IShapedText {
     text: string;
     glyphs: IDocumentSkeletonGlyph[];
     breakPointType: BreakPointType;
+}
+
+function getVisualBlockSize(visualBlock: Nullable<IVisualDocBlock>) {
+    if (visualBlock == null) {
+        return null;
+    }
+
+    if (visualBlock.kind === 'notice_box_block' || visualBlock.kind === 'form_box_block' || visualBlock.kind === 'title_box_block') {
+        return { width: visualBlock.outerWidth || 0, height: visualBlock.outerHeight || 0 };
+    }
+
+    return null;
 }
 
 export function shaping(
@@ -218,16 +230,25 @@ export function shaping(
                     if (customBlock != null) {
                         const { blockId } = customBlock;
                         const drawingOrigin = drawings[blockId];
-                        if (drawingOrigin.layoutType === PositionedObjectLayoutType.INLINE) {
-                            const { angle } = drawingOrigin.docTransform;
-                            const { width = 0, height = 0 } = drawingOrigin.docTransform.size;
-                            const top = 0;
-                            const left = 0;
-                            const boundingBox = getBoundingBox(angle, left, width, top, height);
+                        const visualBlock = viewModel.getSnapshot().visualBlocks?.[blockId] ?? null;
 
-                            newGlyph = createSkeletonCustomBlockGlyph(config, boundingBox.width, boundingBox.height, drawingOrigin.drawingId);
+                        if (drawingOrigin != null) {
+                            if (drawingOrigin.layoutType === PositionedObjectLayoutType.INLINE) {
+                                const { angle } = drawingOrigin.docTransform;
+                                const { width = 0, height = 0 } = drawingOrigin.docTransform.size;
+                                const top = 0;
+                                const left = 0;
+                                const boundingBox = getBoundingBox(angle, left, width, top, height);
+
+                                newGlyph = createSkeletonCustomBlockGlyph(config, boundingBox.width, boundingBox.height, drawingOrigin.drawingId);
+                            } else {
+                                newGlyph = createSkeletonCustomBlockGlyph(config, 0, 0, drawingOrigin.drawingId);
+                            }
                         } else {
-                            newGlyph = createSkeletonCustomBlockGlyph(config, 0, 0, drawingOrigin.drawingId);
+                            const visualSize = getVisualBlockSize(visualBlock);
+                            if (visualSize != null) {
+                                newGlyph = createSkeletonCustomBlockGlyph(config, visualSize.width, visualSize.height, blockId);
+                            }
                         }
                     }
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import type { IDocumentRenderConfig, IScale, ITableCellBorder, Nullable } from '@univerjs/core';
+import type { IDocumentRenderConfig, IScale, ITableCellBorder, IVisualDocBlock, Nullable } from '@univerjs/core';
 
 import type { IDocumentSkeletonGlyph, IDocumentSkeletonLine, IDocumentSkeletonPage, IDocumentSkeletonRow, IDocumentSkeletonTable } from '../../basics/i-document-skeleton-cached';
 import type { Transform } from '../../basics/transform';
@@ -24,7 +24,7 @@ import type { Scene } from '../../scene';
 import type { ComponentExtension, IDrawInfo, IExtensionConfig } from '../extension';
 import type { IDocumentsConfig, IPageMarginLayout } from './doc-component';
 import type { DocumentSkeleton } from './layout/doc-skeleton';
-import { CellValueType, HorizontalAlign, VerticalAlign, WrapStrategy } from '@univerjs/core';
+import { CellValueType, DataStreamTreeTokenType, HorizontalAlign, VerticalAlign, WrapStrategy } from '@univerjs/core';
 import { Subject } from 'rxjs';
 import { BORDER_TYPE as BORDER_LTRB, drawLineByBorderType } from '../../basics';
 import { calculateRectRotate, getRotateOffsetAndFarthestHypotenuse } from '../../basics/draw';
@@ -81,6 +81,88 @@ export class Documents extends DocComponent {
 
         this._pageRender$.complete();
         this._drawLiquid = null;
+    }
+
+    private _getVisualBlocks(): Record<string, IVisualDocBlock> {
+        return this.getSkeleton()?.getViewModel().getSnapshot().visualBlocks ?? {};
+    }
+
+    private _drawVisualDocBlock(
+        ctx: UniverRenderingContext,
+        glyph: IDocumentSkeletonGlyph,
+        lineHeight: number,
+        spanStartPoint: Vector2,
+        visualBlock: IVisualDocBlock
+    ) {
+        const width = Math.max(
+            glyph.width || 0,
+            (visualBlock as { outerWidth?: number }).outerWidth || 0
+        );
+        const height = Math.max(
+            glyph.bBox?.ba + glyph.bBox?.bd || 0,
+            (visualBlock as { outerHeight?: number }).outerHeight || 0,
+            lineHeight || 0
+        );
+
+        ctx.save();
+
+        if (visualBlock.kind === 'title_box_block') {
+            ctx.fillStyle = visualBlock.backgroundColor;
+            if ((ctx as any).fillRectByPrecision) {
+                (ctx as any).fillRectByPrecision(spanStartPoint.x, spanStartPoint.y, width, height);
+            } else {
+                ctx.fillRect(spanStartPoint.x, spanStartPoint.y, width, height);
+            }
+            ctx.strokeStyle = visualBlock.border.color;
+            ctx.lineWidth = visualBlock.border.widthPx || 1;
+            ctx.strokeRect(spanStartPoint.x, spanStartPoint.y, width, height);
+            const fontWeight = visualBlock.bold ? '700' : '400';
+            const fontFamily = visualBlock.fontFamily || 'Malgun Gothic';
+            const fontSize = visualBlock.fontSizePx || 18;
+            ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`.trim();
+            ctx.fillStyle = visualBlock.color || '#111111';
+            ctx.textBaseline = 'top';
+            ctx.textAlign = 'left';
+            ctx.fillText(
+                visualBlock.text,
+                spanStartPoint.x + visualBlock.padding.left,
+                spanStartPoint.y + visualBlock.padding.top
+            );
+            ctx.restore();
+            return;
+        }
+
+        if (visualBlock.kind !== 'notice_box_block') {
+            ctx.restore();
+            return;
+        }
+
+        ctx.fillStyle = visualBlock.backgroundColor;
+        if ((ctx as any).fillRectByPrecision) {
+            (ctx as any).fillRectByPrecision(spanStartPoint.x, spanStartPoint.y, width, height);
+        } else {
+            ctx.fillRect(spanStartPoint.x, spanStartPoint.y, width, height);
+        }
+        ctx.strokeStyle = visualBlock.border.color;
+        ctx.lineWidth = visualBlock.border.widthPx || 1;
+        ctx.strokeRect(spanStartPoint.x, spanStartPoint.y, width, height);
+
+        const padding = visualBlock.padding;
+        let textY = spanStartPoint.y + padding.top;
+        for (const paragraph of visualBlock.paragraphs.slice(0, 12)) {
+            const fontSize = paragraph.fontSizePx || 14;
+            const fontWeight = paragraph.bold ? '700' : '400';
+            const fontStyle = paragraph.italic ? 'italic' : 'normal';
+            const fontFamily = paragraph.fontFamily || 'Malgun Gothic';
+            ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`.trim();
+            ctx.fillStyle = paragraph.color || '#1f2328';
+            ctx.textBaseline = 'top';
+            ctx.textAlign = 'left';
+            ctx.fillText(paragraph.text, spanStartPoint.x + padding.left, textY);
+            textY += Math.max(paragraph.lineHeight || fontSize + 4, fontSize + 2);
+        }
+
+        ctx.restore();
     }
 
     getOffsetConfig(): IDocumentOffsetConfig {
@@ -396,7 +478,12 @@ export class Documents extends DocComponent {
 
                                 // Draw text\border\lines etc.
                                 for (const glyph of glyphGroup) {
-                                    if (!glyph.content || glyph.content.length === 0) {
+                                    const visualBlocks = this._getVisualBlocks();
+                                    const visualBlock = glyph.streamType === DataStreamTreeTokenType.CUSTOM_BLOCK && glyph.drawingId != null
+                                        ? visualBlocks[glyph.drawingId] ?? null
+                                        : null;
+
+                                    if ((!glyph.content || glyph.content.length === 0) && visualBlock == null) {
                                         continue;
                                     }
 
@@ -436,10 +523,15 @@ export class Documents extends DocComponent {
                                         renderConfig,
                                     };
 
-                                    for (const extension of glyphExtensionsExcludeBackground) {
-                                        extension.extensionOffset = extensionOffset;
-                                        extension.draw(ctx, parentScale, glyph, [], {
-                                            viewBound: bounds?.viewBound,
+                                if (visualBlock) {
+                                    this._drawVisualDocBlock(ctx, glyph, lineHeight, spanStartPoint, visualBlock);
+                                    continue;
+                                }
+
+                                for (const extension of glyphExtensionsExcludeBackground) {
+                                    extension.extensionOffset = extensionOffset;
+                                    extension.draw(ctx, parentScale, glyph, [], {
+                                        viewBound: bounds?.viewBound,
                                         } as IDrawInfo);
                                     }
                                 }
@@ -697,7 +789,12 @@ export class Documents extends DocComponent {
 
                             // Draw text\border\lines etc.
                             for (const glyph of glyphGroup) {
-                                if (!glyph.content || glyph.content.length === 0) {
+                                const visualBlocks = this._getVisualBlocks();
+                                const visualBlock = glyph.streamType === DataStreamTreeTokenType.CUSTOM_BLOCK && glyph.drawingId != null
+                                    ? visualBlocks[glyph.drawingId] ?? null
+                                    : null;
+
+                                if ((!glyph.content || glyph.content.length === 0) && visualBlock == null) {
                                     continue;
                                 }
 
@@ -736,6 +833,11 @@ export class Documents extends DocComponent {
                                     alignOffset,
                                     renderConfig,
                                 };
+
+                                if (visualBlock) {
+                                    this._drawVisualDocBlock(ctx, glyph, lineHeight, spanStartPoint, visualBlock);
+                                    continue;
+                                }
 
                                 for (const extension of glyphExtensionsExcludeBackground) {
                                     extension.extensionOffset = extensionOffset;
@@ -960,7 +1062,12 @@ export class Documents extends DocComponent {
 
                             // Draw text\border\lines etc.
                             for (const glyph of glyphGroup) {
-                                if (!glyph.content || glyph.content.length === 0) {
+                                const visualBlocks = this._getVisualBlocks();
+                                const visualBlock = glyph.streamType === DataStreamTreeTokenType.CUSTOM_BLOCK && glyph.drawingId != null
+                                    ? visualBlocks[glyph.drawingId] ?? null
+                                    : null;
+
+                                if ((!glyph.content || glyph.content.length === 0) && visualBlock == null) {
                                     continue;
                                 }
 
@@ -999,6 +1106,11 @@ export class Documents extends DocComponent {
                                     alignOffset,
                                     renderConfig,
                                 };
+
+                                if (visualBlock) {
+                                    this._drawVisualDocBlock(ctx, glyph, lineHeight, spanStartPoint, visualBlock);
+                                    continue;
+                                }
 
                                 for (const extension of glyphExtensionsExcludeBackground) {
                                     extension.extensionOffset = extensionOffset;

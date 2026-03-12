@@ -50,7 +50,7 @@ export function DesktopWorkbenchContent(props: IUniverWorkbenchProps) {
         footer = true,
         headerMenu = true,
         contextMenu = true,
-        ribbonType = 'default',
+        ribbonType = 'collapsed',
         mountContainer,
         onRendered,
     } = props;
@@ -130,12 +130,12 @@ export function DesktopWorkbenchContent(props: IUniverWorkbenchProps) {
 
     return (
         <ConfigProvider locale={locale?.design} mountContainer={portalContainer}>
+            <OnlyOfficeTitleBar />
             {/**
               * IMPORTANT! This `tabIndex` should not be moved. This attribute allows the element to catch
               * all focusin event merged from its descendants. The DesktopLayoutService would listen to focusin events
               * bubbled to this element and refocus the input element.
               */}
-            <OnlyOfficeTitleBar />
             <div
                 data-u-comp="workbench-layout"
                 className={clsx(`
