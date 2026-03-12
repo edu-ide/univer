@@ -94,6 +94,24 @@ export interface IVisualNoticeBoxBlock {
     sourceTarget?: string | null;
 }
 
+export interface IVisualFormTextBoxLine {
+    text: string;
+    fontFamily?: string;
+    fontSizePx?: number;
+    bold?: boolean;
+    italic?: boolean;
+    color?: string;
+    lineHeight?: number;
+}
+
+export interface IVisualFormTextBox {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    lines: IVisualFormTextBoxLine[];
+}
+
 export interface IVisualFormBoxBlock {
     kind: 'form_box_block';
     blockId?: string;
@@ -101,6 +119,7 @@ export interface IVisualFormBoxBlock {
     outerHeight: number;
     padding: IVisualBoxInsets;
     paragraphs: IVisualSyntheticParagraph[];
+    textBoxes?: IVisualFormTextBox[];
     sourceTarget?: string | null;
     pictureTargets?: Array<string | null>;
 }

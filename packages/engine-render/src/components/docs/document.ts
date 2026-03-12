@@ -132,34 +132,96 @@ export class Documents extends DocComponent {
             return;
         }
 
-        if (visualBlock.kind !== 'notice_box_block') {
+        if (visualBlock.kind === 'notice_box_block') {
+            ctx.fillStyle = visualBlock.backgroundColor;
+            if ((ctx as any).fillRectByPrecision) {
+                (ctx as any).fillRectByPrecision(spanStartPoint.x, spanStartPoint.y, width, height);
+            } else {
+                ctx.fillRect(spanStartPoint.x, spanStartPoint.y, width, height);
+            }
+            ctx.strokeStyle = visualBlock.border.color;
+            ctx.lineWidth = visualBlock.border.widthPx || 1;
+            ctx.strokeRect(spanStartPoint.x, spanStartPoint.y, width, height);
+
+            const padding = visualBlock.padding;
+            let textY = spanStartPoint.y + padding.top;
+            for (const paragraph of visualBlock.paragraphs.slice(0, 12)) {
+                const fontSize = paragraph.fontSizePx || 14;
+                const fontWeight = paragraph.bold ? '700' : '400';
+                const fontStyle = paragraph.italic ? 'italic' : 'normal';
+                const fontFamily = paragraph.fontFamily || 'Malgun Gothic';
+                ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`.trim();
+                ctx.fillStyle = paragraph.color || '#1f2328';
+                ctx.textBaseline = 'top';
+                ctx.textAlign = 'left';
+                ctx.fillText(paragraph.text, spanStartPoint.x + padding.left, textY);
+                textY += Math.max(paragraph.lineHeight || fontSize + 4, fontSize + 2);
+            }
+
             ctx.restore();
             return;
         }
 
-        ctx.fillStyle = visualBlock.backgroundColor;
+        if (visualBlock.kind !== 'form_box_block') {
+            ctx.restore();
+            return;
+        }
+
+        ctx.fillStyle = '#ffffff';
         if ((ctx as any).fillRectByPrecision) {
             (ctx as any).fillRectByPrecision(spanStartPoint.x, spanStartPoint.y, width, height);
         } else {
             ctx.fillRect(spanStartPoint.x, spanStartPoint.y, width, height);
         }
-        ctx.strokeStyle = visualBlock.border.color;
-        ctx.lineWidth = visualBlock.border.widthPx || 1;
+        ctx.strokeStyle = '#6f6f6f';
+        ctx.lineWidth = 1;
         ctx.strokeRect(spanStartPoint.x, spanStartPoint.y, width, height);
 
-        const padding = visualBlock.padding;
-        let textY = spanStartPoint.y + padding.top;
-        for (const paragraph of visualBlock.paragraphs.slice(0, 12)) {
-            const fontSize = paragraph.fontSizePx || 14;
-            const fontWeight = paragraph.bold ? '700' : '400';
-            const fontStyle = paragraph.italic ? 'italic' : 'normal';
-            const fontFamily = paragraph.fontFamily || 'Malgun Gothic';
-            ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`.trim();
-            ctx.fillStyle = paragraph.color || '#1f2328';
-            ctx.textBaseline = 'top';
-            ctx.textAlign = 'left';
-            ctx.fillText(paragraph.text, spanStartPoint.x + padding.left, textY);
-            textY += Math.max(paragraph.lineHeight || fontSize + 4, fontSize + 2);
+        const textBoxes = visualBlock.textBoxes || [];
+        if (textBoxes.length === 0) {
+            const padding = visualBlock.padding;
+            let textY = spanStartPoint.y + padding.top;
+            for (const paragraph of visualBlock.paragraphs.slice(0, 24)) {
+                const style = paragraph.style || {};
+                const fontSize = style.fs || 12;
+                const fontWeight = style.bl === 1 ? '700' : '400';
+                const fontStyle = style.it === 1 ? 'italic' : 'normal';
+                const fontFamily = style.ff || 'Malgun Gothic';
+                const color = style.cl?.rgb ? `#${style.cl.rgb}` : '#111111';
+                ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`.trim();
+                ctx.fillStyle = color;
+                ctx.textBaseline = 'top';
+                ctx.textAlign = 'left';
+                ctx.fillText(paragraph.text, spanStartPoint.x + padding.left, textY);
+                textY += Math.max(fontSize + 4, 16);
+                if (textY > spanStartPoint.y + height - padding.bottom) break;
+            }
+            ctx.restore();
+            return;
+        }
+
+        for (const box of textBoxes) {
+            const bx = spanStartPoint.x + box.x;
+            const by = spanStartPoint.y + box.y;
+            const bw = box.width;
+            const bh = box.height;
+            ctx.strokeStyle = '#8a8a8a';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(bx, by, bw, bh);
+            let lineY = by + 4;
+            for (const line of box.lines.slice(0, 4)) {
+                const fontSize = line.fontSizePx || 12;
+                const fontWeight = line.bold ? '700' : '400';
+                const fontStyle = line.italic ? 'italic' : 'normal';
+                const fontFamily = line.fontFamily || 'Malgun Gothic';
+                ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`.trim();
+                ctx.fillStyle = line.color || '#111111';
+                ctx.textBaseline = 'top';
+                ctx.textAlign = 'left';
+                ctx.fillText(line.text, bx + 4, lineY);
+                lineY += Math.max(line.lineHeight || fontSize + 3, fontSize + 1);
+                if (lineY > by + bh - 4) break;
+            }
         }
 
         ctx.restore();
