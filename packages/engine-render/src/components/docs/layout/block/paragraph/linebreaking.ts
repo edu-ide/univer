@@ -130,7 +130,14 @@ function _getVisualBlockSize(visualBlock: Nullable<IVisualDocBlock>) {
         return null;
     }
 
-    if (visualBlock.kind === 'notice_box_block' || visualBlock.kind === 'form_box_block' || visualBlock.kind === 'title_box_block') {
+    if (
+        visualBlock.kind === 'notice_box_block'
+        || visualBlock.kind === 'form_grid_block'
+        || visualBlock.kind === 'form_box_block'
+        || visualBlock.kind === 'title_box_block'
+        || visualBlock.kind === 'section_body_block'
+        || visualBlock.kind === 'page_number_block'
+    ) {
         return { width: visualBlock.outerWidth || 0, height: visualBlock.outerHeight || 0 };
     }
 
@@ -248,7 +255,8 @@ export function lineBreaking(
 
     for (let i = 0, len = blocks.length; i < len; i++) {
         const charIndex = blocks[i];
-        const customBlock = viewModel.getCustomBlock(charIndex);
+        const customBlock = viewModel.getCustomBlock(charIndex)
+            || (i === 0 ? viewModel.getCustomBlock(charIndex - 1) : null);
 
         if (customBlock == null) {
             continue;

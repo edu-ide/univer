@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import type { IDocumentRenderConfig, IScale, ITableCellBorder, IVisualDocBlock, Nullable } from '@univerjs/core';
+import type { IAnchoredVisualBlock, IDocumentRenderConfig, IScale, ITableCellBorder, IVisualDocBlock, Nullable } from '@univerjs/core';
 
 import type { IDocumentSkeletonGlyph, IDocumentSkeletonLine, IDocumentSkeletonPage, IDocumentSkeletonRow, IDocumentSkeletonTable } from '../../basics/i-document-skeleton-cached';
 import type { Transform } from '../../basics/transform';
@@ -36,6 +36,7 @@ import { DocumentsSpanAndLineExtensionRegistry } from '../extension';
 import { DocComponent } from './doc-component';
 import { DOCS_EXTENSION_TYPE } from './doc-extension';
 import { Liquid } from './liquid';
+import { getPositionHorizon, getPositionVertical } from './layout/tools';
 import './extensions';
 
 const DEFAULT_BORDER_COLOR: ITableCellBorder = {
@@ -63,6 +64,7 @@ export class Documents extends DocComponent {
     readonly pageRender$ = this._pageRender$.asObservable();
 
     private _drawLiquid: Nullable<Liquid> = new Liquid();
+    private _visualBlockImageCache = new Map<string, HTMLImageElement>();
 
     constructor(oKey: string, documentSkeleton?: DocumentSkeleton, config?: IDocumentsConfig) {
         super(oKey, documentSkeleton, config);
@@ -87,12 +89,57 @@ export class Documents extends DocComponent {
         return this.getSkeleton()?.getViewModel().getSnapshot().visualBlocks ?? {};
     }
 
+    private _getAnchoredVisualBlocks(): Record<string, IAnchoredVisualBlock> {
+        return (this.getSkeleton()?.getViewModel().getSnapshot() as any).anchoredVisualBlocks ?? {};
+    }
+
+    private _getCachedVisualBlockImage(dataUrl: string) {
+        const cached = this._visualBlockImageCache.get(dataUrl);
+        if (cached) {
+            return cached;
+        }
+
+        const image = new Image();
+        image.onload = () => {
+            this.makeDirty(true);
+        };
+        image.src = dataUrl;
+        this._visualBlockImageCache.set(dataUrl, image);
+        return image;
+    }
+
+    private _drawVisualBlockPictureLayers(
+        ctx: UniverRenderingContext,
+        spanStartPoint: Vector2,
+        layers: Array<{ dataUrl: string; x: number; y: number; width: number; height: number }> | undefined
+    ) {
+        if (!layers || layers.length === 0) {
+            return;
+        }
+
+        for (const layer of layers) {
+            if (!layer?.dataUrl) continue;
+            const image = this._getCachedVisualBlockImage(layer.dataUrl);
+            if (!image.complete || image.naturalWidth === 0) {
+                continue;
+            }
+            ctx.drawImage(
+                image,
+                spanStartPoint.x + (layer.x || 0),
+                spanStartPoint.y + (layer.y || 0),
+                layer.width || image.width,
+                layer.height || image.height
+            );
+        }
+    }
+
     private _drawVisualDocBlock(
         ctx: UniverRenderingContext,
         glyph: IDocumentSkeletonGlyph,
         lineHeight: number,
         spanStartPoint: Vector2,
-        visualBlock: IVisualDocBlock
+        visualBlock: IVisualDocBlock,
+        pageNumber?: number
     ) {
         const width = Math.max(
             glyph.width || 0,
@@ -106,28 +153,139 @@ export class Documents extends DocComponent {
 
         ctx.save();
 
-        if (visualBlock.kind === 'title_box_block') {
-            ctx.fillStyle = visualBlock.backgroundColor;
-            if ((ctx as any).fillRectByPrecision) {
-                (ctx as any).fillRectByPrecision(spanStartPoint.x, spanStartPoint.y, width, height);
-            } else {
-                ctx.fillRect(spanStartPoint.x, spanStartPoint.y, width, height);
+        const wrapTextSmart = (text: string, maxWidth: number) => {
+            if (!text || maxWidth <= 0) {
+                return text ? [text] : [];
             }
-            ctx.strokeStyle = visualBlock.border.color;
-            ctx.lineWidth = visualBlock.border.widthPx || 1;
-            ctx.strokeRect(spanStartPoint.x, spanStartPoint.y, width, height);
+
+            const flushLongToken = (token: string, lines: string[]) => {
+                let current = '';
+                for (const ch of Array.from(token)) {
+                    const candidate = current + ch;
+                    if (!current || ctx.measureText(candidate).width <= maxWidth) {
+                        current = candidate;
+                    } else {
+                        if (current.trim().length > 0) {
+                            lines.push(current);
+                        }
+                        current = ch;
+                    }
+                }
+                if (current.trim().length > 0) {
+                    lines.push(current);
+                }
+            };
+
+            const tokens = text.split(/(\s+)/).filter((token) => token.length > 0);
+            if (tokens.length === 0) {
+                return [];
+            }
+
+            const lines: string[] = [];
+            let current = '';
+            for (const token of tokens) {
+                const candidate = current + token;
+                if (!current || ctx.measureText(candidate).width <= maxWidth) {
+                    current = candidate;
+                    continue;
+                }
+
+                if (current.trim().length > 0) {
+                    lines.push(current.trimEnd());
+                }
+
+                const trimmedToken = token.trimStart();
+                if (ctx.measureText(trimmedToken).width <= maxWidth) {
+                    current = trimmedToken;
+                } else {
+                    flushLongToken(trimmedToken, lines);
+                    current = '';
+                }
+            }
+            if (current.trim().length > 0) {
+                lines.push(current.trimEnd());
+            }
+            return lines;
+        };
+
+        const drawSyntheticParagraphs = (
+            paragraphs: Array<{ text: string; style?: Record<string, any> }>,
+            padding: { top: number; right: number; bottom: number; left: number }
+        ) => {
+            let textY = spanStartPoint.y + padding.top;
+            const maxTextWidth = Math.max(12, width - padding.left - padding.right);
+            for (const paragraph of paragraphs.slice(0, 24)) {
+                const style = paragraph.style || {};
+                const fontSize = style.fs || 12;
+                const fontWeight = style.bl === 1 ? '700' : '400';
+                const fontStyle = style.it === 1 ? 'italic' : 'normal';
+                const fontFamily = style.ff || 'Malgun Gothic';
+                const color = style.cl?.rgb
+                    ? (style.cl.rgb.startsWith('#') ? style.cl.rgb : `#${style.cl.rgb}`)
+                    : '#111111';
+                ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`.trim();
+                ctx.fillStyle = color;
+                ctx.textBaseline = 'top';
+                ctx.textAlign = 'left';
+                const lineHeight = Math.max(fontSize + 4, 16);
+                const lines = wrapTextSmart(paragraph.text, maxTextWidth);
+                for (const line of lines) {
+                    ctx.fillText(line, spanStartPoint.x + padding.left, textY);
+                    textY += lineHeight;
+                    if (textY > spanStartPoint.y + height - padding.bottom) break;
+                }
+                if (textY > spanStartPoint.y + height - padding.bottom) break;
+            }
+        };
+
+        if (visualBlock.kind === 'title_box_block') {
+            const shapeVariant = visualBlock.shapeVariant ?? 'rect';
+            const slantWidth = Math.max(0, visualBlock.slantWidthPx ?? 18);
+
+            if (shapeVariant === 'right_slant') {
+                ctx.beginPath();
+                ctx.moveTo(spanStartPoint.x, spanStartPoint.y);
+                ctx.lineTo(spanStartPoint.x + Math.max(width - slantWidth, 0), spanStartPoint.y);
+                ctx.lineTo(spanStartPoint.x + width, spanStartPoint.y + height);
+                ctx.lineTo(spanStartPoint.x, spanStartPoint.y + height);
+                ctx.closePath();
+                ctx.fillStyle = visualBlock.backgroundColor;
+                ctx.fill();
+                ctx.strokeStyle = visualBlock.border.color;
+                ctx.lineWidth = visualBlock.border.widthPx || 1;
+                ctx.stroke();
+            } else {
+                ctx.fillStyle = visualBlock.backgroundColor;
+                if ((ctx as any).fillRectByPrecision) {
+                    (ctx as any).fillRectByPrecision(spanStartPoint.x, spanStartPoint.y, width, height);
+                } else {
+                    ctx.fillRect(spanStartPoint.x, spanStartPoint.y, width, height);
+                }
+                ctx.strokeStyle = visualBlock.border.color;
+                ctx.lineWidth = visualBlock.border.widthPx || 1;
+                ctx.strokeRect(spanStartPoint.x, spanStartPoint.y, width, height);
+            }
             const fontWeight = visualBlock.bold ? '700' : '400';
             const fontFamily = visualBlock.fontFamily || 'Malgun Gothic';
             const fontSize = visualBlock.fontSizePx || 18;
             ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`.trim();
             ctx.fillStyle = visualBlock.color || '#111111';
             ctx.textBaseline = 'top';
-            ctx.textAlign = 'left';
-            ctx.fillText(
-                visualBlock.text,
-                spanStartPoint.x + visualBlock.padding.left,
-                spanStartPoint.y + visualBlock.padding.top
+            const align = visualBlock.align || 'left';
+            const innerWidth = Math.max(12, width - visualBlock.padding.left - visualBlock.padding.right);
+            const textWidth = ctx.measureText(visualBlock.text).width;
+            let textX = spanStartPoint.x + visualBlock.padding.left;
+            if (align === 'center') {
+                textX = spanStartPoint.x + visualBlock.padding.left + Math.max(0, (innerWidth - textWidth) / 2);
+            } else if (align === 'right') {
+                textX = spanStartPoint.x + width - visualBlock.padding.right - textWidth;
+            }
+            const textY = spanStartPoint.y + Math.max(
+                visualBlock.padding.top,
+                (height - fontSize) / 2
             );
+            ctx.textAlign = 'left';
+            ctx.fillText(visualBlock.text, textX, textY);
             ctx.restore();
             return;
         }
@@ -139,6 +297,7 @@ export class Documents extends DocComponent {
             } else {
                 ctx.fillRect(spanStartPoint.x, spanStartPoint.y, width, height);
             }
+            this._drawVisualBlockPictureLayers(ctx, spanStartPoint, (visualBlock as any).pictureLayers);
             ctx.strokeStyle = visualBlock.border.color;
             ctx.lineWidth = visualBlock.border.widthPx || 1;
             ctx.strokeRect(spanStartPoint.x, spanStartPoint.y, width, height);
@@ -154,8 +313,156 @@ export class Documents extends DocComponent {
                 ctx.fillStyle = paragraph.color || '#1f2328';
                 ctx.textBaseline = 'top';
                 ctx.textAlign = 'left';
-                ctx.fillText(paragraph.text, spanStartPoint.x + padding.left, textY);
-                textY += Math.max(paragraph.lineHeight || fontSize + 4, fontSize + 2);
+                const indentLeft = paragraph.indentLeft || 0;
+                const indentRight = paragraph.indentRight || 0;
+                const maxTextWidth = Math.max(12, width - padding.left - padding.right - indentLeft - indentRight);
+                const lineHeight = Math.max(paragraph.lineHeight || fontSize + 4, fontSize + 2);
+                const lines = wrapTextSmart(paragraph.text, maxTextWidth);
+                textY += paragraph.spaceBefore || 0;
+                for (const line of lines) {
+                    const textWidth = ctx.measureText(line).width;
+                    const align = paragraph.align || 'left';
+                    let textX = spanStartPoint.x + padding.left + indentLeft;
+                    if (align === 'center') {
+                        textX = spanStartPoint.x + padding.left + Math.max(0, (maxTextWidth - textWidth) / 2) + indentLeft;
+                    } else if (align === 'right' || align === 'end') {
+                        textX = spanStartPoint.x + width - padding.right - indentRight - textWidth;
+                    }
+                    ctx.fillText(line, textX, textY);
+                    textY += lineHeight;
+                }
+                textY += paragraph.spaceAfter || 2;
+            }
+
+            ctx.restore();
+            return;
+        }
+
+        if (visualBlock.kind === 'section_body_block') {
+            drawSyntheticParagraphs(visualBlock.paragraphs, visualBlock.padding);
+            ctx.restore();
+            return;
+        }
+
+        if (visualBlock.kind === 'page_number_block') {
+            const fontFamily = visualBlock.fontFamily || 'Malgun Gothic';
+            const fontSize = visualBlock.fontSizePx || 12;
+            const fontWeight = visualBlock.bold ? '700' : '400';
+            ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`.trim();
+            ctx.fillStyle = visualBlock.color || '#111111';
+            ctx.textBaseline = 'top';
+            ctx.textAlign = 'left';
+            const numberText = String(pageNumber ?? 1);
+            const text = `${visualBlock.prefixText || ''}${numberText}${visualBlock.suffixText || ''}`;
+            const textWidth = ctx.measureText(text).width;
+            const textX = spanStartPoint.x + Math.max(0, (width - textWidth) / 2);
+            const textY = spanStartPoint.y + Math.max(0, (height - fontSize) / 2);
+            console.warn('[DocsRender][page_number_block]', {
+                drawingId: visualBlock.blockId,
+                pageNumber,
+                text,
+                width,
+                height,
+                textWidth,
+                textX,
+                textY,
+            });
+            ctx.fillText(text, textX, textY);
+            ctx.restore();
+            return;
+        }
+
+        if (visualBlock.kind === 'form_grid_block') {
+            ctx.fillStyle = '#ffffff';
+            if ((ctx as any).fillRectByPrecision) {
+                (ctx as any).fillRectByPrecision(spanStartPoint.x, spanStartPoint.y, width, height);
+            } else {
+                ctx.fillRect(spanStartPoint.x, spanStartPoint.y, width, height);
+            }
+            this._drawVisualBlockPictureLayers(ctx, spanStartPoint, visualBlock.pictureLayers);
+
+            const cells = visualBlock.cells || [];
+            if (!visualBlock.pictureLayers || visualBlock.pictureLayers.length === 0) {
+                ctx.strokeStyle = '#6f6f6f';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(spanStartPoint.x, spanStartPoint.y, width, height);
+                for (const cell of cells) {
+                    ctx.strokeStyle = '#8a8a8a';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(
+                        spanStartPoint.x + cell.x,
+                        spanStartPoint.y + cell.y,
+                        cell.width,
+                        cell.height
+                    );
+                }
+            }
+
+            const textBoxes = visualBlock.textBoxes || [];
+            for (let boxIndex = 0; boxIndex < textBoxes.length; boxIndex++) {
+                const box = textBoxes[boxIndex];
+                const bx = spanStartPoint.x + box.x;
+                const by = spanStartPoint.y + box.y;
+                const bw = box.width;
+                const bh = box.height;
+                const preparedLines = box.lines.slice(0, 8).map((line) => {
+                    const fontSize = line.fontSizePx || 12;
+                    const fontWeight = line.bold ? '700' : '400';
+                    const fontStyle = line.italic ? 'italic' : 'normal';
+                    const fontFamily = line.fontFamily || 'Malgun Gothic';
+                    ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`.trim();
+                    const indentLeft = line.indentLeft || 0;
+                    const indentRight = line.indentRight || 0;
+                    const maxTextWidth = Math.max(12, bw - 8 - indentLeft - indentRight);
+                    const wrappedLines = wrapTextSmart(line.text, maxTextWidth);
+                    const lineHeight = Math.max(line.lineHeight || fontSize + 3, fontSize + 1);
+                    return {
+                        ...line,
+                        fontSize,
+                        fontWeight,
+                        fontStyle,
+                        fontFamily,
+                        wrappedLines,
+                        lineHeight,
+                        indentLeft,
+                        indentRight,
+                        spaceBefore: line.spaceBefore || 0,
+                        spaceAfter: line.spaceAfter || 0,
+                    };
+                });
+
+                const totalHeight = preparedLines.reduce((sum, line) => (
+                    sum
+                    + line.spaceBefore
+                    + (line.wrappedLines.length * line.lineHeight)
+                    + line.spaceAfter
+                ), 0);
+                let lineY = by + Math.max(4, (bh - totalHeight) / 2);
+
+                for (const line of preparedLines) {
+                    ctx.font = `${line.fontStyle} ${line.fontWeight} ${line.fontSize}px ${line.fontFamily}`.trim();
+                    ctx.fillStyle = line.color || '#111111';
+                    ctx.textBaseline = 'top';
+                    ctx.textAlign = 'left';
+                    lineY += line.spaceBefore;
+                    const align = line.align || 'left';
+                    const maxTextWidth = Math.max(12, bw - 8 - line.indentLeft - line.indentRight);
+
+                    for (const wrappedLine of line.wrappedLines) {
+                        const textWidth = ctx.measureText(wrappedLine).width;
+                        let textX = bx + 4 + line.indentLeft;
+                        if (align === 'center') {
+                            textX = bx + Math.max(4, (bw - textWidth) / 2);
+                        } else if (align === 'right' || align === 'end') {
+                            textX = bx + Math.max(4, bw - line.indentRight - textWidth - 4);
+                        }
+                        ctx.fillText(wrappedLine, textX, lineY);
+                        lineY += line.lineHeight;
+                        if (lineY > by + bh - 4) break;
+                    }
+                    lineY += line.spaceAfter;
+                    if (lineY > by + bh - 4) break;
+                }
             }
 
             ctx.restore();
@@ -179,23 +486,7 @@ export class Documents extends DocComponent {
 
         const textBoxes = visualBlock.textBoxes || [];
         if (textBoxes.length === 0) {
-            const padding = visualBlock.padding;
-            let textY = spanStartPoint.y + padding.top;
-            for (const paragraph of visualBlock.paragraphs.slice(0, 24)) {
-                const style = paragraph.style || {};
-                const fontSize = style.fs || 12;
-                const fontWeight = style.bl === 1 ? '700' : '400';
-                const fontStyle = style.it === 1 ? 'italic' : 'normal';
-                const fontFamily = style.ff || 'Malgun Gothic';
-                const color = style.cl?.rgb ? `#${style.cl.rgb}` : '#111111';
-                ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`.trim();
-                ctx.fillStyle = color;
-                ctx.textBaseline = 'top';
-                ctx.textAlign = 'left';
-                ctx.fillText(paragraph.text, spanStartPoint.x + padding.left, textY);
-                textY += Math.max(fontSize + 4, 16);
-                if (textY > spanStartPoint.y + height - padding.bottom) break;
-            }
+            drawSyntheticParagraphs(visualBlock.paragraphs, visualBlock.padding);
             ctx.restore();
             return;
         }
@@ -586,7 +877,7 @@ export class Documents extends DocComponent {
                                     };
 
                                 if (visualBlock) {
-                                    this._drawVisualDocBlock(ctx, glyph, lineHeight, spanStartPoint, visualBlock);
+                                    this._drawVisualDocBlock(ctx, glyph, lineHeight, spanStartPoint, visualBlock, page.pageNumber);
                                     continue;
                                 }
 
@@ -637,6 +928,15 @@ export class Documents extends DocComponent {
                     false
                 );
             }
+
+            this._drawAnchoredVisualBlocksForPage(
+                ctx,
+                page,
+                i,
+                pageLeft,
+                pageTop,
+                alignOffsetNoAngle
+            );
 
             this._pageRender$.next({
                 page,
@@ -852,9 +1152,19 @@ export class Documents extends DocComponent {
                             // Draw text\border\lines etc.
                             for (const glyph of glyphGroup) {
                                 const visualBlocks = this._getVisualBlocks();
-                                const visualBlock = glyph.streamType === DataStreamTreeTokenType.CUSTOM_BLOCK && glyph.drawingId != null
+                                let visualBlock = glyph.streamType === DataStreamTreeTokenType.CUSTOM_BLOCK && glyph.drawingId != null
                                     ? visualBlocks[glyph.drawingId] ?? null
                                     : null;
+                                if (
+                                    visualBlock == null &&
+                                    glyph.streamType === DataStreamTreeTokenType.CUSTOM_BLOCK &&
+                                    (glyph.drawingId == null || glyph.drawingId === '')
+                                ) {
+                                    const pageNumberBlock = Object.values(visualBlocks).find((block) => block.kind === 'page_number_block') ?? null;
+                                    if (pageNumberBlock) {
+                                        visualBlock = pageNumberBlock;
+                                    }
+                                }
 
                                 if ((!glyph.content || glyph.content.length === 0) && visualBlock == null) {
                                     continue;
@@ -897,7 +1207,7 @@ export class Documents extends DocComponent {
                                 };
 
                                 if (visualBlock) {
-                                    this._drawVisualDocBlock(ctx, glyph, lineHeight, spanStartPoint, visualBlock);
+                                    this._drawVisualDocBlock(ctx, glyph, lineHeight, spanStartPoint, visualBlock, parentPage.pageNumber);
                                     continue;
                                 }
 
@@ -1027,7 +1337,7 @@ export class Documents extends DocComponent {
             return;
         }
         const { sections } = page;
-        const { y: originY } = this._drawLiquid;
+        const { y: originY, x: originX } = this._drawLiquid;
 
         for (const section of sections) {
             const { columns } = section;
@@ -1170,7 +1480,7 @@ export class Documents extends DocComponent {
                                 };
 
                                 if (visualBlock) {
-                                    this._drawVisualDocBlock(ctx, glyph, lineHeight, spanStartPoint, visualBlock);
+                                    this._drawVisualDocBlock(ctx, glyph, lineHeight, spanStartPoint, visualBlock, parentPage.pageNumber);
                                     continue;
                                 }
 
@@ -1195,6 +1505,111 @@ export class Documents extends DocComponent {
             }
 
             this._drawLiquid.translateRestore();
+        }
+
+        if (!isHeader) {
+            const visualBlocks = this._getVisualBlocks();
+            const pageNumberBlockEntry = Object.entries(visualBlocks).find(([, block]) => block.kind === 'page_number_block') || null;
+            if (pageNumberBlockEntry) {
+                const [blockId, block] = pageNumberBlockEntry;
+                const fakeGlyph = {
+                    streamType: DataStreamTreeTokenType.CUSTOM_BLOCK,
+                    drawingId: blockId,
+                    width: block.outerWidth,
+                    bBox: { ba: block.outerHeight, bd: 0 },
+                } as any;
+                const spanStartPoint = Vector2.create(
+                    originX + parentPage.marginLeft + Math.max(0, (parentPage.pageWidth - block.outerWidth) / 2),
+                    originY + alignOffsetNoAngle.y
+                );
+                this._drawVisualDocBlock(
+                    ctx,
+                    fakeGlyph,
+                    block.outerHeight,
+                    spanStartPoint,
+                    block,
+                    parentPage.pageNumber
+                );
+            }
+        }
+    }
+
+    private _drawAnchoredVisualBlocksForPage(
+        ctx: UniverRenderingContext,
+        page: IDocumentSkeletonPage,
+        pageIndex: number,
+        pageLeft: number,
+        pageTop: number,
+        alignOffsetNoAngle: Vector2
+    ) {
+        const skeleton = this.getSkeleton();
+        if (!skeleton) {
+            return;
+        }
+        const anchoredBlocks = this._getAnchoredVisualBlocks();
+        const entries = Object.entries(anchoredBlocks);
+        if (entries.length === 0) {
+            return;
+        }
+
+        for (const [blockId, block] of entries) {
+            const anchorCharIndex = (block as any).anchorCharIndex;
+            const placement = (block as any).placement;
+            if (anchorCharIndex == null || placement == null) {
+                continue;
+            }
+
+            const nodePosition = skeleton.findNodePositionByCharIndex(anchorCharIndex, true);
+            if (!nodePosition || nodePosition.page !== pageIndex) {
+                continue;
+            }
+
+            const section = page.sections[nodePosition.section];
+            const column = section?.columns?.[nodePosition.column];
+            const line = column?.lines?.[nodePosition.line];
+            if (!column || !line) {
+                continue;
+            }
+
+            const width = (block as any).outerWidth || 0;
+            const height = (block as any).outerHeight || 0;
+            const left = getPositionHorizon(placement.positionH, column, page, width, false);
+            const paragraphAnchorTop = (block as any).anchorMode === 'paragraph_bottom'
+                ? line.top + line.lineHeight
+                : line.top;
+            const top = getPositionVertical(
+                placement.positionV,
+                page,
+                line.top,
+                line.lineHeight,
+                height,
+                paragraphAnchorTop,
+                false
+            );
+            if (left == null || top == null) {
+                continue;
+            }
+
+            const fakeGlyph = {
+                streamType: DataStreamTreeTokenType.CUSTOM_BLOCK,
+                drawingId: blockId,
+                width,
+                bBox: { ba: height, bd: 0 },
+            } as unknown as IDocumentSkeletonGlyph;
+
+            const spanStartPoint = Vector2.create(
+                pageLeft + alignOffsetNoAngle.x + left,
+                pageTop + alignOffsetNoAngle.y + top
+            );
+
+            this._drawVisualDocBlock(
+                ctx,
+                fakeGlyph,
+                height,
+                spanStartPoint,
+                block as unknown as IVisualDocBlock,
+                page.pageNumber
+            );
         }
     }
 

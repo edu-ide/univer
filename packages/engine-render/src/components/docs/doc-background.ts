@@ -52,6 +52,13 @@ export class DocBackground extends DocComponent {
         }
 
         const { documentFlavor } = docDataModel.getSnapshot().documentStyle;
+        const isRenderRegressionMode = (() => {
+            try {
+                return new URLSearchParams(window.location.search).get('testMode') === 'render-regression';
+            } catch {
+                return false;
+            }
+        })();
 
         if (documentFlavor !== DocumentFlavor.TRADITIONAL) {
             return;
@@ -89,8 +96,8 @@ export class DocBackground extends DocComponent {
             const backgroundOptions = {
                 width: pageWidth ?? width,
                 height: pageHeight ?? height,
-                strokeWidth: 1,
-                stroke: PAGE_STROKE_COLOR,
+                strokeWidth: isRenderRegressionMode ? 0 : 1,
+                stroke: isRenderRegressionMode ? 'rgba(0, 0, 0, 0)' : PAGE_STROKE_COLOR,
                 fill: PAGE_FILL_COLOR,
                 zIndex: 3,
             };
@@ -139,7 +146,9 @@ export class DocBackground extends DocComponent {
                 strokeWidth: 1.5,
                 stroke: MARGIN_STROKE_COLOR,
             };
-            Path.drawWith(ctx, marginIdentification);
+            if (!isRenderRegressionMode) {
+                Path.drawWith(ctx, marginIdentification);
+            }
             ctx.restore();
 
             const { x, y } = this._drawLiquid.translatePage(

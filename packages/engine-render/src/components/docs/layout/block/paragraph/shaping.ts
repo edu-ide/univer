@@ -111,7 +111,14 @@ function getVisualBlockSize(visualBlock: Nullable<IVisualDocBlock>) {
         return null;
     }
 
-    if (visualBlock.kind === 'notice_box_block' || visualBlock.kind === 'form_box_block' || visualBlock.kind === 'title_box_block') {
+    if (
+        visualBlock.kind === 'notice_box_block'
+        || visualBlock.kind === 'form_grid_block'
+        || visualBlock.kind === 'form_box_block'
+        || visualBlock.kind === 'title_box_block'
+        || visualBlock.kind === 'section_body_block'
+        || visualBlock.kind === 'page_number_block'
+    ) {
         return { width: visualBlock.outerWidth || 0, height: visualBlock.outerHeight || 0 };
     }
 
@@ -225,7 +232,9 @@ export function shaping(
                 if (char === DataStreamTreeTokenType.CUSTOM_BLOCK) {
                     const config = getFontCreateConfig(i, viewModel, paragraphNode, sectionBreakConfig, paragraph);
                     let newGlyph: Nullable<IDocumentSkeletonGlyph> = null;
-                    const customBlock = viewModel.getCustomBlockWithoutSetCurrentIndex(paragraphNode.startIndex + i);
+                    const charIndex = paragraphNode.startIndex + i;
+                    const customBlock = viewModel.getCustomBlockWithoutSetCurrentIndex(charIndex)
+                        || (i === 0 ? viewModel.getCustomBlockWithoutSetCurrentIndex(charIndex - 1) : null);
 
                     if (customBlock != null) {
                         const { blockId } = customBlock;

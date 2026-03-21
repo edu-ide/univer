@@ -784,20 +784,24 @@ export class DocSelectionRenderService extends RxDisposable implements IRenderMo
 
         this._input.contentEditable = 'true';
 
+        const testMode = typeof window !== 'undefined' ? (window as any).__docTestMode : null;
+        const hideEditorChrome = testMode === 'render-regression' || Boolean((window as any)?.__docTestDisableLocalOverlays);
+
         // TODO: to be removed
         this._input.dataset.uComp = 'editor';
         this._input.id = `__editor_${this._context.unitId}`;
         this._input.style.cssText = `
             position: absolute;
             overflow: hidden;
-            opacity: 1;
-            background: #000;
+            opacity: ${hideEditorChrome ? '0' : '1'};
+            background: ${hideEditorChrome ? 'transparent' : '#000'};
             color: transparent;
             outline: none;
             z-index: -2;
             caret-color: transparent;
             white-space: pre-wrap;
             user-select: text;
+            pointer-events: none;
         `;
     }
 

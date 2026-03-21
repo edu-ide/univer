@@ -46,6 +46,7 @@ export interface IReferenceSource {
     lists?: ILists;
     drawings?: IDrawings;
     visualBlocks?: IVisualBlocks;
+    anchoredVisualBlocks?: IAnchoredVisualBlocks;
     drawingsOrder?: string[];
     headerFooterDrawingsOrder?: string[];
 }
@@ -102,6 +103,11 @@ export interface IVisualFormTextBoxLine {
     italic?: boolean;
     color?: string;
     lineHeight?: number;
+    align?: string;
+    spaceBefore?: number;
+    spaceAfter?: number;
+    indentLeft?: number;
+    indentRight?: number;
 }
 
 export interface IVisualFormTextBox {
@@ -110,6 +116,34 @@ export interface IVisualFormTextBox {
     width: number;
     height: number;
     lines: IVisualFormTextBoxLine[];
+}
+
+export interface IVisualFormGridCell {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    textBoxIndexes: number[];
+}
+
+export interface IVisualImageLayer {
+    dataUrl: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+export interface IVisualFormGridBlock {
+    kind: 'form_grid_block';
+    blockId?: string;
+    outerWidth: number;
+    outerHeight: number;
+    textBoxes: IVisualFormTextBox[];
+    cells: IVisualFormGridCell[];
+    pictureLayers?: IVisualImageLayer[];
+    sourceTarget?: string | null;
+    pictureTargets?: Array<string | null>;
 }
 
 export interface IVisualFormBoxBlock {
@@ -138,12 +172,63 @@ export interface IVisualTitleBoxBlock {
     color: string;
     bold?: boolean;
     align?: 'left' | 'center' | 'right';
+    shapeVariant?: 'rect' | 'right_slant';
+    slantWidthPx?: number;
 }
 
-export type IVisualDocBlock = IVisualNoticeBoxBlock | IVisualFormBoxBlock | IVisualTitleBoxBlock;
+export interface IVisualSectionBodyBlock {
+    kind: 'section_body_block';
+    blockId?: string;
+    outerWidth: number;
+    outerHeight: number;
+    padding: IVisualBoxInsets;
+    paragraphs: IVisualSyntheticParagraph[];
+    sourceTarget?: string | null;
+    pictureTargets?: Array<string | null>;
+}
+
+export interface IVisualPageNumberBlock {
+    kind: 'page_number_block';
+    blockId?: string;
+    outerWidth: number;
+    outerHeight: number;
+    fontFamily?: string;
+    fontSizePx?: number;
+    color?: string;
+    bold?: boolean;
+    prefixText?: string;
+    suffixText?: string;
+}
+
+export type IVisualDocBlock = IVisualNoticeBoxBlock | IVisualFormGridBlock | IVisualFormBoxBlock | IVisualTitleBoxBlock | IVisualSectionBodyBlock | IVisualPageNumberBlock;
 
 export interface IVisualBlocks {
     [blockId: string]: IVisualDocBlock;
+}
+
+export interface IAnchoredVisualPlacement {
+    layoutType: PositionedObjectLayoutType;
+    positionH: IObjectPositionH;
+    positionV: IObjectPositionV;
+    behindDoc?: BooleanNumber;
+    distL?: number;
+    distR?: number;
+    distT?: number;
+    distB?: number;
+    wrapText?: WrapTextType;
+}
+
+export interface IAnchoredVisualNoticeBoxBlock extends IVisualNoticeBoxBlock {
+    blockId: string;
+    anchorCharIndex: number;
+    placement: IAnchoredVisualPlacement;
+    anchorMode?: 'line_top' | 'paragraph_bottom';
+}
+
+export type IAnchoredVisualBlock = IAnchoredVisualNoticeBoxBlock;
+
+export interface IAnchoredVisualBlocks {
+    [blockId: string]: IAnchoredVisualBlock;
 }
 
 export interface IDocumentSettings {
