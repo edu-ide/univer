@@ -16,7 +16,6 @@
 
 import type { Dependency, DependencyIdentifier, Injector } from '@wendellhu/redi';
 
-// Values
 export {
     createIdentifier,
     forwardRef,
@@ -38,10 +37,8 @@ export {
     Self,
     setDependencies,
     SkipSelf,
-    WithNew
+    WithNew,
 } from '@wendellhu/redi';
-
-// Types
 export type {
     AsyncDependencyItem,
     AsyncHook,
@@ -56,7 +53,7 @@ export type {
     IdentifierDecorator,
     IDisposable,
     SyncDependencyItem,
-    ValueDependencyItem
+    ValueDependencyItem,
 } from '@wendellhu/redi';
 
 /**
