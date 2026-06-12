@@ -339,7 +339,44 @@ export class Documents extends DocComponent {
         }
 
         if (visualBlock.kind === 'section_body_block') {
-            drawSyntheticParagraphs(visualBlock.paragraphs, visualBlock.padding);
+            const padding = visualBlock.padding;
+            let textY = spanStartPoint.y + padding.top;
+            for (const paragraph of visualBlock.paragraphs.slice(0, 24)) {
+                const style = paragraph.style || {};
+                const fontSize = paragraph.fontSizePx || style.fs || 12;
+                const fontWeight = (paragraph.bold || style.bl === 1) ? '700' : '400';
+                const fontStyle = (paragraph.italic || style.it === 1) ? 'italic' : 'normal';
+                const fontFamily = paragraph.fontFamily || style.ff || 'Malgun Gothic';
+                const color = paragraph.color
+                    || (style.cl?.rgb
+                        ? (style.cl.rgb.startsWith('#') ? style.cl.rgb : `#${style.cl.rgb}`)
+                        : '#1f2328');
+                ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`.trim();
+                ctx.fillStyle = color;
+                ctx.textBaseline = 'top';
+                ctx.textAlign = 'left';
+                const indentLeft = paragraph.indentLeft || 0;
+                const indentRight = paragraph.indentRight || 0;
+                const maxTextWidth = Math.max(12, width - padding.left - padding.right - indentLeft - indentRight);
+                const lineHeight = Math.max(paragraph.lineHeight || fontSize + 4, fontSize + 2);
+                const lines = wrapTextSmart(paragraph.text, maxTextWidth);
+                textY += paragraph.spaceBefore || 0;
+                for (const line of lines) {
+                    const textWidth = ctx.measureText(line).width;
+                    const align = paragraph.align || 'left';
+                    let textX = spanStartPoint.x + padding.left + indentLeft;
+                    if (align === 'center') {
+                        textX = spanStartPoint.x + padding.left + Math.max(0, (maxTextWidth - textWidth) / 2) + indentLeft;
+                    } else if (align === 'right' || align === 'end') {
+                        textX = spanStartPoint.x + width - padding.right - indentRight - textWidth;
+                    }
+                    ctx.fillText(line, textX, textY);
+                    textY += lineHeight;
+                    if (textY > spanStartPoint.y + height - padding.bottom) break;
+                }
+                textY += paragraph.spaceAfter || 2;
+                if (textY > spanStartPoint.y + height - padding.bottom) break;
+            }
             ctx.restore();
             return;
         }
