@@ -27,6 +27,10 @@ export function OnlyOfficeTitleBar() {
   // Submenu hover state
   const [hoveredSubmenu, setHoveredSubmenu] = useState<string | null>(null);
 
+  const navigateHome = () => {
+    window.location.href = '/';
+  };
+
   useEffect(() => {
     const update = () => {
       // Priorities: Sheet > Doc > Slide (or whatever is current)
@@ -301,7 +305,7 @@ export function OnlyOfficeTitleBar() {
     {
       icon: <LayoutDashboard size={14} />,
       label: 'Dashboard',
-      onClick: () => { window.location.href = '/ko/'; setProfileMenuOpen(false); },
+      onClick: () => { navigateHome(); setProfileMenuOpen(false); },
     },
     {
       icon: <Settings size={14} />,
@@ -313,7 +317,7 @@ export function OnlyOfficeTitleBar() {
       icon: <LogOut size={14} />,
       label: 'Sign Out',
       danger: true,
-      onClick: () => { window.location.href = '/ko/'; setProfileMenuOpen(false); },
+      onClick: () => { navigateHome(); setProfileMenuOpen(false); },
     },
   ];
 
@@ -339,8 +343,27 @@ export function OnlyOfficeTitleBar() {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         {/* Home Icon */}
-        <button onClick={() => { window.location.href = '/ko/'; }} title="Home" style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', opacity: 0.9, padding: '4px' }}>
+        <button onClick={navigateHome} title="Home" style={{ background: 'transparent', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', opacity: 0.9, padding: '4px' }}>
           <Home size={16} />
+        </button>
+        <button
+          onClick={navigateHome}
+          title="Home"
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'white',
+            cursor: 'pointer',
+            fontWeight: 700,
+            fontSize: '12px',
+            lineHeight: 1,
+            opacity: 0.92,
+            padding: '4px 6px',
+            borderRadius: '4px',
+          }}
+          className="hover:bg-white/10"
+        >
+          Office
         </button>
 
         {/* Menu Tabs */}
